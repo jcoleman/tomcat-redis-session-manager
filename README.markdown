@@ -38,6 +38,13 @@ Copy the tomcat-redis-session-manager.jar and jedis-2.0.0.jar files into the `li
 
 Reboot the server, and sessions should now be stored in Redis.
 
+Possible Issues
+---------------
+
+There is the possibility of a race condition (though incredibly unlikely) that would cause seeming invisibility of the session immediately after your web application logs in a user: if the response has finished streaming and the client requests a new page before the valve has been able to complete saving the session into Redis, then the new request will not see the session.
+
+If you encounter errors, then you can force save the session early (before sending a response to the client) then you can retrieve the current session, and call `currentSession.manager.save(currentSession)` to synchronously eliminate the race condition.
+
 Acknowledgements
 ----------------
 
