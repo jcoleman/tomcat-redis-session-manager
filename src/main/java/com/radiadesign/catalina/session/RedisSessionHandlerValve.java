@@ -23,26 +23,30 @@ public class RedisSessionHandlerValve extends ValveBase {
     try {
       getNext().invoke(request, response);
     } finally {
-      storeSession(request, response);
+      final Session session = request.getSessionInternal(false);
+      storeOrRemoveSession(session);
+      manager.afterRequest();
     }
   }
 
-  private void storeSession(Request request, Response response) throws IOException {
-    final Session session = request.getSessionInternal(false);
-
-    if (session != null) {
-      if (session.isValid()) {
-        log.fine("Request with session completed, saving session " + session.getId());
-        if (session.getSession() != null) {
-          log.fine("HTTP Session present, saving " + session.getId());
-          manager.save(session);
+  private void storeOrRemoveSession(Session session) {
+    try {
+      if (session != null) {
+        if (session.isValid()) {
+          log.fine("Request with session completed, saving session " + session.getId());
+          if (session.getSession() != null) {
+            log.fine("HTTP Session present, saving " + session.getId());
+            manager.save(session);
+          } else {
+            log.fine("No HTTP Session present, Not saving " + session.getId());
+          }
         } else {
-          log.fine("No HTTP Session present, Not saving " + session.getId());
+          log.fine("HTTP Session has been invalidated, removing :" + session.getId());
+          manager.remove(session);
         }
-      } else {
-        log.fine("HTTP Session has been invalidated, removing :" + session.getId());
-        manager.remove(session);
       }
+    } catch (Exception e) {
+      // Do nothing.
     }
   }
 }

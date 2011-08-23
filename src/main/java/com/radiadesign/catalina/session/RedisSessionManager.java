@@ -330,10 +330,6 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
       if (jedis != null) {
         returnConnection(jedis, error);
       }
-
-      currentSession.remove();
-
-      log.fine("Session removed from ThreadLocal :" + session.getIdInternal());
     }
   }
 
@@ -350,6 +346,14 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
       if (jedis != null) {
         returnConnection(jedis, error);
       }
+    }
+  }
+
+  public void afterRequest() {
+    DeltaSession deltaSession = currentSession.get();
+    if (deltaSession != null) {
+      currentSession.remove();
+      log.fine("Session removed from ThreadLocal :" + deltaSession.getIdInternal());
     }
   }
 
