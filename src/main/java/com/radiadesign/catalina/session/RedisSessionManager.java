@@ -255,16 +255,16 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
       byte[] data = jedis.get(id.getBytes());
       error = false;
 
-      if (data == null) {
-        log.fine("Session " + id + " not found in Redis");
-        currentSession.set(session);
-        save(session)
-        return session;
-      }
-
       session.setMaxInactiveInterval(getMaxInactiveInterval() * 1000);
       session.access();
       session.setValid(true);
+
+      if (data == null) {
+        log.fine("Session " + id + " not found in Redis");
+        currentSession.set(session);
+        return session;
+      }
+
       session.setNew(false);
       serializer.deserializeInto(data, session);
 
@@ -316,12 +316,14 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         jedis.set(binaryId, data);
       } else {
         // TODO: Only do this if this session object was not loaded from the database.
+        //       Or if forced (potentially on first save).
         jedis.setnx(binaryId, data);
       }
 
+      log.fine("Setting expire timeout on session [" + session.getId() + "] to " + getMaxInactiveInterval());
       jedis.expire(binaryId, getMaxInactiveInterval());
-      error = false;
 
+      error = false;
     } catch (IOException e) {
       log.severe(e.getMessage());
 
