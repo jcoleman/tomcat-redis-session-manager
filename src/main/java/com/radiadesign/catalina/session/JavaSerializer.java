@@ -1,6 +1,5 @@
 package com.radiadesign.catalina.session;
 
-import org.apache.catalina.ha.session.DeltaSession;
 import org.apache.catalina.util.CustomObjectInputStream;
 
 import javax.servlet.http.HttpSession;
@@ -18,11 +17,11 @@ public class JavaSerializer implements Serializer {
   @Override
   public byte[] serializeFrom(HttpSession session) throws IOException {
 
-    DeltaSession deltaSession = (DeltaSession) session;
+    RedisSession redisSession = (RedisSession) session;
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(bos));
-    oos.writeLong(deltaSession.getCreationTime());
-    deltaSession.writeObjectData(oos);
+    oos.writeLong(redisSession.getCreationTime());
+    redisSession.writeObjectData(oos);
 
     oos.close();
 
@@ -32,13 +31,13 @@ public class JavaSerializer implements Serializer {
   @Override
   public HttpSession deserializeInto(byte[] data, HttpSession session) throws IOException, ClassNotFoundException {
 
-    DeltaSession deltaSession = (DeltaSession) session;
+    RedisSession redisSession = (RedisSession) session;
 
     BufferedInputStream bis = new BufferedInputStream(new ByteArrayInputStream(data));
 
     ObjectInputStream ois = new CustomObjectInputStream(bis, loader);
-    deltaSession.setCreationTime(ois.readLong());
-    deltaSession.readObjectData(ois);
+    redisSession.setCreationTime(ois.readLong());
+    redisSession.readObjectData(ois);
 
     return session;
   }

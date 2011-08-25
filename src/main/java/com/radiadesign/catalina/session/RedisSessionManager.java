@@ -9,7 +9,6 @@ import org.apache.catalina.Loader;
 import org.apache.catalina.Valve;
 import org.apache.catalina.Session;
 import org.apache.catalina.session.ManagerBase;
-import org.apache.catalina.ha.session.DeltaSession;
 
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
@@ -32,7 +31,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
   protected JedisPool connectionPool;
 
   protected RedisSessionHandlerValve handlerValve;
-  protected ThreadLocal<DeltaSession> currentSession = new ThreadLocal<DeltaSession>();
+  protected ThreadLocal<RedisSession> currentSession = new ThreadLocal<RedisSession>();
   protected Serializer serializer;
 
   protected String serializationStrategyClass = "com.radiadesign.catalina.session.JavaSerializer";
@@ -139,7 +138,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
   @Override
   public Session createEmptySession() {
-    return new DeltaSession(this);
+    return new RedisSession(this);
   }
 
   public void start() throws LifecycleException {
@@ -231,7 +230,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
   }
 
   public Session loadSession(String id) throws IOException {
-    DeltaSession session;
+    RedisSession session;
     
     session = currentSession.get();
     if (session != null) {
@@ -246,24 +245,25 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     Boolean error = true;
 
     try {
-      log.fine("Loading session " + id + " from Redis");
-
-      session = (DeltaSession)createEmptySession();
-      session.setId(id);
+      log.fine("Attempting to load session " + id + " from Redis");
 
       jedis = acquireConnection();
       byte[] data = jedis.get(id.getBytes());
       error = false;
 
-      session.setMaxInactiveInterval(getMaxInactiveInterval() * 1000);
-      session.access();
-      session.setValid(true);
-
       if (data == null) {
-        log.fine("Session " + id + " not found in Redis");
+        log.warning("Session " + id + " not found in Redis");
+        session = null;
       } else {
-        session.setNew(false);
+        log.warning("Deserializing session from Redis");
+        session = (RedisSession)createEmptySession();
         serializer.deserializeInto(data, session);
+        session.setId(id);
+        session.setNew(false);
+        session.setMaxInactiveInterval(getMaxInactiveInterval() * 1000);
+        session.access();
+        session.setValid(true);
+        session.resetChangedAttributes();
 
         if (log.isLoggable(Level.FINE)) {
           log.fine("Session Contents [" + session.getId() + "]:");
@@ -281,8 +281,8 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
       log.severe(e.getMessage());
       throw e;
     } catch (ClassNotFoundException ex) {
-      log.log(Level.SEVERE, "Unable to deserialize session ", ex);
-      throw new IOException("Unable to deserializeInto session", ex);
+      log.log(Level.SEVERE, "Unable to deserialize into session ", ex);
+      throw new IOException("Unable to deserialize into session", ex);
     } finally {
       if (jedis != null) {
         returnConnection(jedis, error);
@@ -297,21 +297,24 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     try {
       log.fine("Saving session " + session + " into Redis");
 
-      DeltaSession deltaSession = (DeltaSession) session;
+      RedisSession redisSession = (RedisSession) session;
 
       if (log.isLoggable(Level.FINE)) {
-        log.fine("Session Contents [" + session.getId() + "]:");
-        for (Object name : Collections.list(deltaSession.getAttributeNames())) {
-            log.fine("  " + name);
+        log.fine("Session Contents [" + redisSession.getId() + "]:");
+        for (Object name : Collections.list(redisSession.getAttributeNames())) {
+          log.fine("  " + name);
         }
       }
 
-      byte[] binaryId = session.getId().getBytes();
-      byte[] data = serializer.serializeFrom(deltaSession);
+      Boolean sessionIsDirty = redisSession.isDirty();
+
+      redisSession.resetChangedAttributes();
+      byte[] binaryId = redisSession.getId().getBytes();
+      byte[] data = serializer.serializeFrom(redisSession);
 
       jedis = acquireConnection();
 
-      if (deltaSession.isDirty()) {
+      if (sessionIsDirty) {
         jedis.set(binaryId, data);
       } else {
         // TODO: Only do this if this session object was not loaded from the database.
@@ -319,7 +322,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         jedis.setnx(binaryId, data);
       }
 
-      log.fine("Setting expire timeout on session [" + session.getId() + "] to " + getMaxInactiveInterval());
+      log.fine("Setting expire timeout on session [" + redisSession.getId() + "] to " + getMaxInactiveInterval());
       jedis.expire(binaryId, getMaxInactiveInterval());
 
       error = false;
@@ -351,10 +354,10 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
   }
 
   public void afterRequest() {
-    DeltaSession deltaSession = currentSession.get();
-    if (deltaSession != null) {
+    RedisSession redisSession = currentSession.get();
+    if (redisSession != null) {
       currentSession.remove();
-      log.fine("Session removed from ThreadLocal :" + deltaSession.getIdInternal());
+      log.fine("Session removed from ThreadLocal :" + redisSession.getIdInternal());
     }
   }
 
