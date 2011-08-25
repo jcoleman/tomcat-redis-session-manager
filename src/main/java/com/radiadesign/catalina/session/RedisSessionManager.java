@@ -261,21 +261,20 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
       if (data == null) {
         log.fine("Session " + id + " not found in Redis");
-        currentSession.set(session);
-        return session;
-      }
+      } else {
+        session.setNew(false);
+        serializer.deserializeInto(data, session);
 
-      session.setNew(false);
-      serializer.deserializeInto(data, session);
-
-      if (log.isLoggable(Level.FINE)) {
-        log.fine("Session Contents [" + session.getId() + "]:");
-        for (Object name : Collections.list(session.getAttributeNames())) {
-            log.fine("  " + name);
+        if (log.isLoggable(Level.FINE)) {
+          log.fine("Session Contents [" + session.getId() + "]:");
+          for (Object name : Collections.list(session.getAttributeNames())) {
+              log.fine("  " + name);
+          }
         }
+
+        log.fine("Loaded session id " + id);
       }
 
-      log.fine("Loaded session id " + id);
       currentSession.set(session);
       return session;
     } catch (IOException e) {
