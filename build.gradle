@@ -1,4 +1,5 @@
 apply plugin: 'java'
+version = '1.0-RC1'
 
 repositories {
   mavenCentral()
