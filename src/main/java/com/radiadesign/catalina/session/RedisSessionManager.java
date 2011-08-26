@@ -167,6 +167,8 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     log.info("Will expire sessions after " + getMaxInactiveInterval() + " seconds");
 
     initializeDatabaseConnection();
+
+    setDistributable(true);
     
     lifecycle.fireLifecycleEvent(START_EVENT, null);
   }
