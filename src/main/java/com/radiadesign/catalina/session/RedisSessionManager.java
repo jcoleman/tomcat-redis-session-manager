@@ -385,14 +385,11 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
       redisSession.resetDirtyTracking();
       byte[] binaryId = redisSession.getId().getBytes();
-      byte[] data = serializer.serializeFrom(redisSession);
 
       jedis = acquireConnection();
 
       if (sessionIsDirty || currentSessionIsPersisted.get() != true) {
-        jedis.set(binaryId, data);
-      } else {
-        jedis.setnx(binaryId, data);
+        jedis.set(binaryId, serializer.serializeFrom(redisSession));
       }
 
       currentSessionIsPersisted.set(true);
