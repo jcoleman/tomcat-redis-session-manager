@@ -50,6 +50,14 @@ public class RedisSession extends StandardSession {
     super.removeAttribute(name);
   }
 
+  @Override
+  public void setId(String id) {
+    // Specifically do not call super(): it's implementation does unexpected things
+    // like calling manager.remove(session.id) and manager.add(session).
+    
+    this.id = id;
+  }
+
   public void setPrincipal(Principal principal) {
     dirty = true;
     super.setPrincipal(principal);
