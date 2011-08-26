@@ -252,10 +252,10 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
       error = false;
 
       if (data == null) {
-        log.warning("Session " + id + " not found in Redis");
+        log.fine("Session " + id + " not found in Redis");
         session = null;
       } else {
-        log.warning("Deserializing session from Redis");
+        log.fine("Deserializing session from Redis");
         session = (RedisSession)createEmptySession();
         serializer.deserializeInto(data, session);
         session.setId(id);
