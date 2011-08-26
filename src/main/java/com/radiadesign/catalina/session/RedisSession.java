@@ -1,5 +1,6 @@
 package com.radiadesign.catalina.session;
 
+import java.security.Principal;
 import org.apache.catalina.Manager;
 import org.apache.catalina.session.StandardSession;
 import java.util.HashMap;
@@ -10,26 +11,28 @@ import java.util.logging.Logger;
 
 public class RedisSession extends StandardSession {
   private static Logger log = Logger.getLogger("RedisSession");
-  
+
   protected HashMap<String, Object> changedAttributes;
-  
+  protected Boolean dirty;
+
   public RedisSession(Manager manager) {
     super(manager);
-    resetChangedAttributes();
+    resetDirtyTracking();
   }
-  
+
   public Boolean isDirty() {
-    return !changedAttributes.isEmpty();
+    return dirty || !changedAttributes.isEmpty();
   }
-  
+
   public HashMap<String, Object> getChangedAttributes() {
     return changedAttributes;
   }
-  
-  public void resetChangedAttributes() {
+
+  public void resetDirtyTracking() {
     changedAttributes = new HashMap<String, Object>();
+    dirty = false;
   }
-  
+
   public void setAttribute(String key, Object value) {
     Object oldValue = getAttribute(key);
     if ( value == null && oldValue != null
@@ -38,8 +41,18 @@ public class RedisSession extends StandardSession {
          || !value.equals(oldValue) ) {
       changedAttributes.put(key, value);
     }
-    
+
     super.setAttribute(key, value);
   }
-  
+
+  public void removeAttribute(String name) {
+    dirty = true;
+    super.removeAttribute(name);
+  }
+
+  public void setPrincipal(Principal principal) {
+    dirty = true;
+    super.setPrincipal(principal);
+  }
+
 }
