@@ -13,6 +13,7 @@ import org.apache.catalina.session.ManagerBase;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.Jedis;
+import redis.clients.jedis.Protocol;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -32,6 +33,8 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
   protected String host = "localhost";
   protected int port = 6379;
   protected int database = 0;
+  protected String password = null;
+  protected int timeout = Protocol.DEFAULT_TIMEOUT;
   protected JedisPool connectionPool;
 
   protected RedisSessionHandlerValve handlerValve;
@@ -71,6 +74,22 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
   public void setDatabase(int database) {
     this.database = database;
+  }
+
+  public int getTimeout() {
+    return timeout;
+  }
+
+  public void setTimeout(int timeout) {
+    this.timeout = timeout;
+  }
+
+  public String getPassword() {
+    return password;
+  }
+
+  public void setPassword(String password) {
+    this.password = password;
   }
 
   public void setSerializationStrategyClass(String strategy) {
@@ -446,7 +465,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
   private void initializeDatabaseConnection() throws LifecycleException {
     try {
       // TODO: Allow more parameters (like port).
-      connectionPool = new JedisPool(new JedisPoolConfig(), getHost(), getPort());
+      connectionPool = new JedisPool(new JedisPoolConfig(), getHost(), getPort(), getTimeout(), getPassword());
     } catch (Exception e) {
       e.printStackTrace();
       throw new LifecycleException("Error Connecting to Redis", e);
