@@ -464,7 +464,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
   private void initializeDatabaseConnection() throws LifecycleException {
     try {
-      // TODO: Allow more parameters (like port).
+      // TODO: Allow configuration of pool (such as size...)
       connectionPool = new JedisPool(new JedisPoolConfig(), getHost(), getPort(), getTimeout(), getPassword());
     } catch (Exception e) {
       e.printStackTrace();
