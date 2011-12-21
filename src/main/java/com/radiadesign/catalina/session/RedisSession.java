@@ -36,7 +36,7 @@ public class RedisSession extends StandardSession {
   public void setAttribute(String key, Object value) {
     Object oldValue = getAttribute(key);
     if ( value == null && oldValue != null
-         || oldValue != null && value == null
+         || oldValue == null && value != null
          || !value.getClass().isInstance(oldValue)
          || !value.equals(oldValue) ) {
       changedAttributes.put(key, value);
