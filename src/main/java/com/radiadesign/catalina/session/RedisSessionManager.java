@@ -178,13 +178,21 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
     setState(LifecycleState.STARTING);
 
+    Boolean attachedToValve = false;
     for (Valve valve : getContainer().getPipeline().getValves()) {
       if (valve instanceof RedisSessionHandlerValve) {
         this.handlerValve = (RedisSessionHandlerValve) valve;
         this.handlerValve.setRedisSessionManager(this);
         log.info("Attached to RedisSessionHandlerValve");
+        attachedToValve = true;
         break;
       }
+    }
+
+    if (!attachedToValve) {
+      String error = "Unable to attach to session handling valve; sessions cannot be saved after the request without the valve starting properly.";
+      log.fatal(error);
+      throw new LifecycleException(error);
     }
 
     try {
