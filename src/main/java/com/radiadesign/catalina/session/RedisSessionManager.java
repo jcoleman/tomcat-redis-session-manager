@@ -280,6 +280,10 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
       session.setId(sessionId);
       session.tellNew();
+
+      currentSession.set(session);
+      currentSessionId.set(sessionId);
+      currentSessionIsPersisted.set(false);
     } finally {
       if (jedis != null) {
         returnConnection(jedis, error);
