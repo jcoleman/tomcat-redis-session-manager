@@ -12,6 +12,19 @@ import java.util.logging.Logger;
 public class RedisSession extends StandardSession {
   private static Logger log = Logger.getLogger("RedisSession");
 
+  protected static Boolean manualDirtyTrackingSupportEnabled = false;
+
+  public void setManualDirtyTrackingSupportEnabled(Boolean enabled) {
+    manualDirtyTrackingSupportEnabled = enabled;
+  }
+
+  protected static String manualDirtyTrackingAttributeKey = "__changed__";
+
+  public void setManualDirtyTrackingAttributeKey(String key) {
+    manualDirtyTrackingAttributeKey = key;
+  }
+
+
   protected HashMap<String, Object> changedAttributes;
   protected Boolean dirty;
 
@@ -34,6 +47,11 @@ public class RedisSession extends StandardSession {
   }
 
   public void setAttribute(String key, Object value) {
+    if (manualDirtyTrackingSupportEnabled && manualDirtyTrackingAttributeKey.equals(key)) {
+      dirty = true;
+      return;
+    }
+
     Object oldValue = getAttribute(key);
     if ( value == null && oldValue != null
          || oldValue == null && value != null
