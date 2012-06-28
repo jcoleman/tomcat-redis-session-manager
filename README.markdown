@@ -12,6 +12,16 @@ The manager relies on the native expiration capability of Redis to expire keys f
 
 Data stored in the session must be Serializable.
 
+Tomcat Versions
+---------------
+
+This project supports both Tomcat 6 and Tomcat 7. Starting at project version 1.1, precompiled JAR downloads are available for either version of Tomcat while project versions before 1.1 are only available for Tomcat 6.
+
+The official release branches in Git are as follows:
+* `tomcat-6`: Continuing work for Tomcat 6 releases.
+* `master`: Continuing work for Tomcat 7 releases.
+* `tomcat-7`: Finalized; has now been merged into `master`.
+
 Architecture
 ------------
 
