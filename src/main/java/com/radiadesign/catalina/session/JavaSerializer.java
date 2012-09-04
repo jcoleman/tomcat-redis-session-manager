@@ -19,11 +19,10 @@ public class JavaSerializer implements Serializer {
 
     RedisSession redisSession = (RedisSession) session;
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
-    ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(bos));
-    oos.writeLong(redisSession.getCreationTime());
-    redisSession.writeObjectData(oos);
-
-    oos.close();
+    try (ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(bos))) {
+      oos.writeLong(redisSession.getCreationTime());
+      redisSession.writeObjectData(oos);
+    }
 
     return bos.toByteArray();
   }
