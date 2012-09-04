@@ -471,6 +471,10 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
   }
 
   public void remove(Session session) {
+    remove(session, false);
+  }
+
+  public void remove(Session session, boolean update) {
     Jedis jedis = null;
     Boolean error = true;
 
