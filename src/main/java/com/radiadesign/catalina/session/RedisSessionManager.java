@@ -1,6 +1,5 @@
 package com.radiadesign.catalina.session;
 
-import org.apache.catalina.Globals;
 import org.apache.catalina.Lifecycle;
 import org.apache.catalina.LifecycleException;
 import org.apache.catalina.LifecycleListener;
@@ -17,10 +16,8 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Protocol;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.Enumeration;
 import java.util.Set;
 
 import org.apache.juli.logging.Log;
@@ -41,9 +38,9 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
   protected JedisPool connectionPool;
 
   protected RedisSessionHandlerValve handlerValve;
-  protected ThreadLocal<RedisSession> currentSession = new ThreadLocal<RedisSession>();
-  protected ThreadLocal<String> currentSessionId = new ThreadLocal<String>();
-  protected ThreadLocal<Boolean> currentSessionIsPersisted = new ThreadLocal<Boolean>();
+  protected ThreadLocal<RedisSession> currentSession = new ThreadLocal<>();
+  protected ThreadLocal<String> currentSessionId = new ThreadLocal<>();
+  protected ThreadLocal<Boolean> currentSessionIsPersisted = new ThreadLocal<>();
   protected Serializer serializer;
 
   protected static String name = "RedisSessionManager";
@@ -99,6 +96,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     this.serializationStrategyClass = strategy;
   }
 
+  @Override
   public int getRejectedSessions() {
     // Essentially do nothing.
     return 0;
@@ -130,10 +128,12 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     returnConnection(jedis, false);
   }
 
+  @Override
   public void load() throws ClassNotFoundException, IOException {
 
   }
 
+  @Override
   public void unload() throws IOException {
 
   }
@@ -143,6 +143,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
    *
    * @param listener The listener to add
    */
+  @Override
   public void addLifecycleListener(LifecycleListener listener) {
     lifecycle.addLifecycleListener(listener);
   }
@@ -151,6 +152,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
    * Get the lifecycle listeners associated with this lifecycle. If this
    * Lifecycle has no listeners registered, a zero-length array is returned.
    */
+  @Override
   public LifecycleListener[] findLifecycleListeners() {
     return lifecycle.findLifecycleListeners();
   }
@@ -161,6 +163,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
    *
    * @param listener The listener to remove
    */
+  @Override
   public void removeLifecycleListener(LifecycleListener listener) {
     lifecycle.removeLifecycleListener(listener);
   }
@@ -197,13 +200,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
     try {
       initializeSerializer();
-    } catch (ClassNotFoundException e) {
-      log.fatal("Unable to load serializer", e);
-      throw new LifecycleException(e);
-    } catch (InstantiationException e) {
-      log.fatal("Unable to load serializer", e);
-      throw new LifecycleException(e);
-    } catch (IllegalAccessException e) {
+    } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
       log.fatal("Unable to load serializer", e);
       throw new LifecycleException(e);
     }
@@ -406,8 +403,9 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
         if (log.isTraceEnabled()) {
           log.trace("Session Contents [" + id + "]:");
-          for (Object name : Collections.list(session.getAttributeNames())) {
-              log.trace("  " + name);
+          Enumeration<String> en = session.getAttributeNames();
+          while (en.hasMoreElements()) {
+            log.trace("  " + en.nextElement());
           }
         }
       }
@@ -437,8 +435,9 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
       if (log.isTraceEnabled()) {
         log.trace("Session Contents [" + redisSession.getId() + "]:");
-        for (Object name : Collections.list(redisSession.getAttributeNames())) {
-          log.trace("  " + name);
+        Enumeration<String> en = redisSession.getAttributeNames();
+        while (en.hasMoreElements()) {
+          log.trace("  " + en.nextElement());
         }
       }
 
@@ -470,10 +469,12 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     }
   }
 
+  @Override
   public void remove(Session session) {
     remove(session, false);
   }
 
+  @Override
   public void remove(Session session, boolean update) {
     Jedis jedis = null;
     Boolean error = true;
