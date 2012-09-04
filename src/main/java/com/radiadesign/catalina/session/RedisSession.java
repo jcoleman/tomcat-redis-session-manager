@@ -4,12 +4,9 @@ import java.security.Principal;
 import org.apache.catalina.Manager;
 import org.apache.catalina.session.StandardSession;
 import java.util.HashMap;
-import java.util.logging.Logger;
 
 
 public class RedisSession extends StandardSession {
-  private static Logger log = Logger.getLogger("RedisSession");
-
   protected static Boolean manualDirtyTrackingSupportEnabled = false;
 
   public void setManualDirtyTrackingSupportEnabled(Boolean enabled) {
