@@ -4,8 +4,6 @@ import java.security.Principal;
 import org.apache.catalina.Manager;
 import org.apache.catalina.session.StandardSession;
 import java.util.HashMap;
-import javax.servlet.ServletException;
-import java.io.IOException;
 import java.util.logging.Logger;
 
 
@@ -46,6 +44,7 @@ public class RedisSession extends StandardSession {
     dirty = false;
   }
 
+  @Override
   public void setAttribute(String key, Object value) {
     if (manualDirtyTrackingSupportEnabled && manualDirtyTrackingAttributeKey.equals(key)) {
       dirty = true;
@@ -63,6 +62,7 @@ public class RedisSession extends StandardSession {
     super.setAttribute(key, value);
   }
 
+  @Override
   public void removeAttribute(String name) {
     dirty = true;
     super.removeAttribute(name);
@@ -72,10 +72,11 @@ public class RedisSession extends StandardSession {
   public void setId(String id) {
     // Specifically do not call super(): it's implementation does unexpected things
     // like calling manager.remove(session.id) and manager.add(session).
-    
+
     this.id = id;
   }
 
+  @Override
   public void setPrincipal(Principal principal) {
     dirty = true;
     super.setPrincipal(principal);
