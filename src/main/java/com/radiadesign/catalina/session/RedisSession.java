@@ -14,13 +14,13 @@ public class RedisSession extends StandardSession {
 
   protected static Boolean manualDirtyTrackingSupportEnabled = false;
 
-  public void setManualDirtyTrackingSupportEnabled(Boolean enabled) {
+  public static void setManualDirtyTrackingSupportEnabled(Boolean enabled) {
     manualDirtyTrackingSupportEnabled = enabled;
   }
 
   protected static String manualDirtyTrackingAttributeKey = "__changed__";
 
-  public void setManualDirtyTrackingAttributeKey(String key) {
+  public static void setManualDirtyTrackingAttributeKey(String key) {
     manualDirtyTrackingAttributeKey = key;
   }
 
