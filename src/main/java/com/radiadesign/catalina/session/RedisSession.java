@@ -42,7 +42,7 @@ public class RedisSession extends StandardSession {
   }
 
   public void resetDirtyTracking() {
-    changedAttributes = new HashMap<String, Object>();
+    changedAttributes = new HashMap<>();
     dirty = false;
   }
 
