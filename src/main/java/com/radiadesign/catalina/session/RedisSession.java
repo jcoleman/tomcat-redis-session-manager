@@ -49,10 +49,11 @@ public class RedisSession extends StandardSession {
     }
 
     Object oldValue = getAttribute(key);
-    if ( value == null && oldValue != null
-         || oldValue == null && value != null
-         || !value.getClass().isInstance(oldValue)
-         || !value.equals(oldValue) ) {
+    if ( (value != null || oldValue != null)
+         && ( value == null && oldValue != null
+              || oldValue == null && value != null
+              || !value.getClass().isInstance(oldValue)
+              || !value.equals(oldValue) ) ) {
       changedAttributes.put(key, value);
     }
 
