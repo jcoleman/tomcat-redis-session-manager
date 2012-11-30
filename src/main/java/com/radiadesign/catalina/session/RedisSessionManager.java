@@ -455,7 +455,8 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
       jedis = acquireConnection();
 
-      if (sessionIsDirty || currentSessionIsPersisted.get() != true) {
+      Boolean isCurrentSessionPersisted = this.currentSessionIsPersisted.get();
+      if (sessionIsDirty || (isCurrentSessionPersisted == null || !isCurrentSessionPersisted)) {
         jedis.set(binaryId, serializer.serializeFrom(redisSession));
       }
 
