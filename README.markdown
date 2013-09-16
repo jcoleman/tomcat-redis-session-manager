@@ -45,7 +45,7 @@ Add the following into your Tomcat context.xml (or the context block of the serv
 
 The Valve must be declared before the Manager.
 
-Copy the tomcat-redis-session-manager.jar and jedis-2.0.0.jar files into the `lib` directory of your Tomcat installation.
+Copy the tomcat-redis-session-manager.jar and jedis-2.0.0.jar, commons-pool-1.6.jar files into the `lib` directory of your Tomcat installation.
 
 Reboot the server, and sessions should now be stored in Redis.
 
