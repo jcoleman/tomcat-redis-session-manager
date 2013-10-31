@@ -15,6 +15,19 @@ import java.io.*;
 public class KryoSerializer implements FactorySerializer
 {
 
+  // Keep Kryo instances on the thread so that we aren't continually creating
+  // them - they are expensive.  Might consider changing this to a true
+  // pool at some point.
+  private ThreadLocal<Kryo> kryo = new ThreadLocal<Kryo>() {
+
+    @Override
+    protected Kryo initialValue()
+    {
+      return new Kryo();
+    }
+
+  };
+
   @Override
   public void setClassLoader( ClassLoader loader )
   {
@@ -29,7 +42,7 @@ public class KryoSerializer implements FactorySerializer
 
     try
     {
-      serializeFrom( session, new Kryo(), output );
+      serializeFrom( session, kryo.get(), output );
     }
     finally
     {
@@ -58,7 +71,7 @@ public class KryoSerializer implements FactorySerializer
 
     try
     {
-      return deserializeInto( sessionFactory, new Kryo(), input );
+      return deserializeInto( sessionFactory, kryo.get(), input );
     }
     finally
     {
