@@ -23,10 +23,20 @@ public class KryoSerializer implements FactorySerializer
     @Override
     protected Kryo initialValue()
     {
-      return new Kryo();
+      return createKryo();
     }
 
   };
+
+  /**
+   * Implements the creation of the Kryo object.  Override this to implement special
+   * processing logic for creating a Kryo.
+   * @return a new Kryo object.
+   */
+  protected Kryo createKryo()
+  {
+    return new Kryo();
+  }
 
   @Override
   public void setClassLoader( ClassLoader loader )
@@ -35,7 +45,7 @@ public class KryoSerializer implements FactorySerializer
   }
 
   @Override
-  public byte[] serializeFrom( HttpSession session ) throws IOException
+  public final byte[] serializeFrom( HttpSession session ) throws IOException
   {
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     Output output = new Output(new BufferedOutputStream(bos));
@@ -58,13 +68,13 @@ public class KryoSerializer implements FactorySerializer
   }
 
   @Override
-  public HttpSession deserializeInto( byte[] data, HttpSession session ) throws IOException, ClassNotFoundException
+  public final HttpSession deserializeInto( byte[] data, HttpSession session ) throws IOException, ClassNotFoundException
   {
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public RedisSession deserializeInto( byte[] data, final RedisSessionFactory sessionFactory ) throws IOException, ClassNotFoundException
+  public final RedisSession deserializeInto( byte[] data, final RedisSessionFactory sessionFactory ) throws IOException, ClassNotFoundException
   {
     BufferedInputStream bis = new BufferedInputStream(new ByteArrayInputStream(data));
     Input input = new Input(bis);
