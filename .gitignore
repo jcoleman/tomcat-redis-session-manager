@@ -1,2 +1,6 @@
 .gradle/*
 build/*
+out/*
+tomcat-redis-session-manager.iml
+tomcat-redis-session-manager.ipr
+tomcat-redis-session-manager.iws

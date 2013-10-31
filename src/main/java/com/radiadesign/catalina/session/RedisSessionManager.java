@@ -17,15 +17,16 @@ import redis.clients.jedis.Protocol;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Set;
 
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
 
+import javax.servlet.http.HttpSession;
 
-public class RedisSessionManager extends ManagerBase implements Lifecycle {
+
+public class RedisSessionManager extends ManagerBase implements Lifecycle, RedisSessionFactory {
 
   protected byte[] NULL_SESSION = "null".getBytes();
 
@@ -42,7 +43,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
   protected ThreadLocal<RedisSession> currentSession = new ThreadLocal<RedisSession>();
   protected ThreadLocal<String> currentSessionId = new ThreadLocal<String>();
   protected ThreadLocal<Boolean> currentSessionIsPersisted = new ThreadLocal<Boolean>();
-  protected Serializer serializer;
+  protected FactorySerializer serializer;
 
   protected static String name = "RedisSessionManager";
 
@@ -299,7 +300,12 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
   @Override
   public Session createEmptySession() {
-    return new RedisSession(this);
+    return createRedisSession();
+  }
+
+  public RedisSession createRedisSession()
+  {
+    return new RedisSession( this );
   }
 
   @Override
@@ -399,8 +405,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         throw new IllegalStateException("Race condition encountered: attempted to load session[" + id + "] which has been created but not yet serialized.");
       } else {
         log.trace("Deserializing session " + id + " from Redis");
-        session = (RedisSession)createEmptySession();
-        serializer.deserializeInto(data, session);
+        session = (RedisSession)serializer.deserializeInto(data, this);
         session.setId(id);
         session.setNew(false);
         session.setMaxInactiveInterval(getMaxInactiveInterval() * 1000);
@@ -529,7 +534,16 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
   private void initializeSerializer() throws ClassNotFoundException, IllegalAccessException, InstantiationException {
     log.info("Attempting to use serializer :" + serializationStrategyClass);
-    serializer = (Serializer) Class.forName(serializationStrategyClass).newInstance();
+    Serializer strategy = (Serializer) Class.forName(serializationStrategyClass).newInstance();
+
+    if ( strategy instanceof FactorySerializer )
+    {
+      serializer = (FactorySerializer) strategy;
+    }
+    else
+    {
+      serializer = new FactorySerializerAdapter( strategy );
+    }
 
     Loader loader = null;
 
@@ -544,4 +558,41 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     }
     serializer.setClassLoader(classLoader);
   }
+
+  private static class FactorySerializerAdapter implements FactorySerializer
+  {
+
+    private Serializer delegate;
+
+    public FactorySerializerAdapter( Serializer delegate )
+    {
+      this.delegate = delegate;
+    }
+
+    @Override
+    public RedisSession deserializeInto( byte[] data, RedisSessionFactory sessionFactory ) throws IOException, ClassNotFoundException
+    {
+      return (RedisSession)delegate.deserializeInto( data, sessionFactory.createRedisSession() );
+    }
+
+    @Override
+    public void setClassLoader( ClassLoader loader )
+    {
+      delegate.setClassLoader( loader );
+    }
+
+    @Override
+    public byte[] serializeFrom( HttpSession session ) throws IOException
+    {
+      return delegate.serializeFrom( session );
+    }
+
+    @Override
+    public HttpSession deserializeInto( byte[] data, HttpSession session ) throws IOException, ClassNotFoundException
+    {
+      return delegate.deserializeInto( data, session );
+    }
+
+  }
+
 }

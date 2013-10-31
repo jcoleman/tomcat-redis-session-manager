@@ -1,4 +1,6 @@
 apply plugin: 'java'
+apply plugin: 'idea'
+
 version = '1.2'
 
 repositories {
@@ -8,6 +10,9 @@ repositories {
 dependencies {
   compile group: 'org.apache.tomcat', name: 'tomcat-catalina', version: '7.0.27'
   compile group: 'redis.clients', name: 'jedis', version: '2.0.0'
+  compile group: 'com.esotericsoftware.kryo', name:'kryo', version: '2.22'
+
   // compile group: 'commons-collections', name: 'commons-collections', version: '3.2'
-  // testCompile group: 'junit', name: 'junit', version: '4.+'
+  testCompile group: 'junit', name: 'junit', version: '4.+'
+  testCompile 'org.mockito:mockito-all:1.9.5'
 }
