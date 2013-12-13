@@ -18,6 +18,7 @@ import redis.clients.jedis.Protocol;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.Set;
 
 import org.apache.juli.logging.Log;
@@ -39,11 +40,14 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
   protected int timeout = Protocol.DEFAULT_TIMEOUT;
   protected JedisPool connectionPool;
 
+  protected String managerId;
   protected RedisSessionHandlerValve handlerValve;
   protected ThreadLocal<RedisSession> currentSession = new ThreadLocal<RedisSession>();
   protected ThreadLocal<String> currentSessionId = new ThreadLocal<String>();
   protected ThreadLocal<Boolean> currentSessionIsPersisted = new ThreadLocal<Boolean>();
   protected FactorySerializer serializer;
+
+  protected HashMap<String, RedisSession> sessionCache = new HashMap<String, RedisSession>();
 
   protected static String name = "RedisSessionManager";
 
@@ -140,6 +144,10 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
 
   }
 
+  public boolean isSessionLoaded() {
+    return (currentSession.get() != null);
+  }
+
   /**
    * Add a lifecycle event listener to this component.
    *
@@ -218,6 +226,8 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
     initializeDatabaseConnection();
 
     setDistributable(true);
+
+    managerId = generateSessionId();
   }
 
 
@@ -244,6 +254,10 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
 
     // Require a new random number generator if we are restarted
     super.stopInternal();
+  }
+
+  private byte[] getSessionKey( String sessionId ) {
+    return (managerId + "-" + sessionId).getBytes();
   }
 
   @Override
@@ -273,7 +287,9 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
         if (jvmRoute != null) {
           sessionId += '.' + jvmRoute;
         }
-      } while (jedis.setnx(sessionId.getBytes(), NULL_SESSION) == 1L); // 1 = key set; 0 = key already existed
+
+        session.setId(sessionId);
+      } while (jedis.setnx(getSessionKey( sessionId ), serializer.serializeFrom(session)) == 1L); // 1 = key set; 0 = key already existed
 
       /* Even though the key is set in Redis, we are not going to flag
          the current thread as having had the session persisted since
@@ -283,12 +299,16 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
 
       error = false;
 
-      session.setId(sessionId);
       session.tellNew();
 
       currentSession.set(session);
       currentSessionId.set(sessionId);
       currentSessionIsPersisted.set(false);
+
+      sessionCache.put( sessionId, session );
+    } catch (IOException err) {
+      error = true;
+      log.error( err.getMessage(), err );
     } finally {
       if (jedis != null) {
         returnConnection(jedis, error);
@@ -395,7 +415,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
       log.trace("Attempting to load session " + id + " from Redis");
 
       jedis = acquireConnection();
-      byte[] data = jedis.get(id.getBytes());
+      byte[] data = jedis.get(getSessionKey( id ));
       error = false;
 
       if (data == null) {
@@ -427,7 +447,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
       log.fatal(e.getMessage());
       throw e;
     } catch (ClassNotFoundException ex) {
-      log.fatal("Unable to deserialize into session", ex);
+      log.fatal("Unable to deserialize into session for context: "+getContainer(), ex);
       throw new IOException("Unable to deserialize into session", ex);
     } finally {
       if (jedis != null) {
@@ -445,6 +465,9 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
 
       RedisSession redisSession = (RedisSession) session;
 
+      // cache it
+      sessionCache.put( session.getId(), redisSession );
+
       if (log.isTraceEnabled()) {
         log.trace("Session Contents [" + redisSession.getId() + "]:");
         Enumeration en = redisSession.getAttributeNames();
@@ -456,7 +479,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
       Boolean sessionIsDirty = redisSession.isDirty();
 
       redisSession.resetDirtyTracking();
-      byte[] binaryId = redisSession.getId().getBytes();
+      byte[] binaryId = getSessionKey( redisSession.getId() );
 
       jedis = acquireConnection();
 
@@ -494,9 +517,11 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
 
     log.trace("Removing session ID : " + session.getId());
 
+    sessionCache.remove( session.getId() );
+
     try {
       jedis = acquireConnection();
-      jedis.del(session.getId());
+      jedis.del( getSessionKey( session.getId() ) );
       error = false;
     } finally {
       if (jedis != null) {

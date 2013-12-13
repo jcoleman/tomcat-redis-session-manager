@@ -25,8 +25,12 @@ public class RedisSessionHandlerValve extends ValveBase {
     try {
       getNext().invoke(request, response);
     } finally {
-      final Session session = request.getSessionInternal(false);
-      storeOrRemoveSession(session);
+      if (manager.isSessionLoaded())
+      {
+        final Session session = request.getSessionInternal(false);
+        storeOrRemoveSession(session);
+      }
+
       manager.afterRequest();
     }
   }
