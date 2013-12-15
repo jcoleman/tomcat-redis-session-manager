@@ -35,7 +35,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
   protected String managerId;
   protected Serializer serializer;
 
-  protected String serializationStrategyClass = "com.radiadesign.catalina.session.JavaSerializer";
+  protected String serializationStrategyClass = JavaSerializer.class.getName();
 
   /**
    * The lifecycle event support for this component.
