@@ -63,6 +63,6 @@ If you encounter errors, then you can force save the session early (before sendi
 Acknowledgements
 ----------------
 
-This project is loosely based on the Redis session manager developed by jcoleman, https://github.com/jcoleman/tomcat-redis-session-manager (originally forked from there), but has gone through significant refactoring, including a package name change.
+This project is based on the Redis session manager developed by jcoleman, https://github.com/jcoleman/tomcat-redis-session-manager (originally forked from there), but has gone through significant refactoring, including a package name change.
 
 The architecture of this project was based on the Mongo-Tomcat-Sessions project found at https://github.com/dawsonsystems/Mongo-Tomcat-Sessions
