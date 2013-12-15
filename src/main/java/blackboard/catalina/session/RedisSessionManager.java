@@ -16,6 +16,8 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Protocol;
 
 import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
@@ -36,6 +38,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
   protected Serializer serializer;
 
   protected String serializationStrategyClass = JavaSerializer.class.getName();
+  protected Set<String> sessionsToLoad = new HashSet<String>();
 
   /**
    * The lifecycle event support for this component.
@@ -193,48 +196,60 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
     return new RedisSession( this );
   }
 
-  public RedisSession loadSession(final String id) throws IOException {
-    return execute( null, new SessionOperation()
+  @Override
+  public Session findSession( String id ) throws IOException
+  {
+    if ( sessionsToLoad.contains( id ) )
+    {
+      loadSession( id );
+    }
+
+    return super.findSession( id );
+  }
+
+  private void loadSession(final String id) {
+    execute( new SessionOperation()
     {
 
       @Override
-      public RedisSession execute( Jedis jedis, RedisSession session ) throws Exception
+      public void execute( Jedis jedis ) throws Exception
       {
         byte[] data = jedis.get(getSessionKey( id ));
 
         if (data == null) {
           log.trace("Session " + id + " not found in Redis");
-          return null;
+          return;
         }
 
         log.trace("Deserializing session " + id + " from Redis");
-        session = (RedisSession)serializer.readSession( data, RedisSessionManager.this );
+        RedisSession session = (RedisSession)serializer.readSession( data, RedisSessionManager.this );
 
         session.setId( id );
         session.setNew( false );
         session.access();
         session.setValid(true);
         session.resetDirtyTracking();
-        return session;
+
+        sessionsToLoad.remove( id );
+        sessions.put( id, session );
       }
 
     } );
   }
 
-  public void save(Session session) {
+  private void saveSession(Session session) {
     log.trace("Saving session " + session + " into Redis");
 
-    RedisSession redisSession = (RedisSession) session;
+    final RedisSession redisSession = (RedisSession) session;
     if (redisSession.isDirty()) {
-      execute( redisSession, new SessionOperation()
+      execute( new SessionOperation()
       {
 
         @Override
-        public RedisSession execute( Jedis jedis, RedisSession session ) throws Exception
+        public void execute( Jedis jedis ) throws Exception
         {
-          jedis.set(getSessionKey( session.getId() ), serializer.writeSession( session ));
-          session.resetDirtyTracking();
-          return session;
+          jedis.set(getSessionKey( redisSession.getId() ), serializer.writeSession( redisSession ));
+          redisSession.resetDirtyTracking();
         }
 
       } );
@@ -247,21 +262,20 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
 
     log.trace( "Removing session ID : " + session.getId() );
 
-    execute( (RedisSession) session, new SessionOperation()
+    execute( new SessionOperation()
     {
 
       @Override
-      public RedisSession execute( Jedis jedis, RedisSession session )
+      public void execute( Jedis jedis )
       {
         jedis.del( getSessionKey( session.getId() ) );
-        return null;
       }
 
     } );
   }
 
   
-  private RedisSession execute( RedisSession session, SessionOperation operation )
+  private void execute( SessionOperation operation )
   {
     Jedis jedis = null;
     boolean error = false;
@@ -273,7 +287,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
         jedis.select(getDatabase());
       }
 
-      return operation.execute( jedis, session );
+      operation.execute( jedis );
     } catch ( Exception err ) {
       error = true;
       throw new IllegalStateException( err );
@@ -291,20 +305,16 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
 
   public void beforeRequest( Request request ) throws IOException
   {
-    RedisSession session = loadSession( request.getRequestedSessionId() );
-
-    if ( session != null )
-    {
-      sessions.put( session.getIdInternal(), session );
-    }
+    sessionsToLoad.add( request.getRequestedSessionId() );
   }
 
   public void afterRequest( Request request ) throws IOException
   {
+    sessionsToLoad.remove( request.getRequestedSessionId() );
     RedisSession session = (RedisSession)request.getSessionInternal( false );
 
     if (session != null && session.isValid() && session.isDirty() ) {
-      save( session );
+      saveSession( session );
     }
   }
 
@@ -335,7 +345,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
   private static interface SessionOperation
   {
 
-    public RedisSession execute( Jedis jedis, RedisSession session ) throws Exception;
+    public void execute( Jedis jedis ) throws Exception;
 
   }
 
