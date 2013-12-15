@@ -36,8 +36,8 @@ Usage
 
 Add the following into your Tomcat context.xml (or the context block of the server.xml if applicable.)
 
-    <Valve className="com.radiadesign.catalina.session.RedisSessionHandlerValve" />
-    <Manager className="com.radiadesign.catalina.session.RedisSessionManager"
+    <Valve className="blackboard.catalina.session.RedisSessionHandlerValve" />
+    <Manager className="blackboard.catalina.session.RedisSessionManager"
              host="localhost" <!-- optional: defaults to "localhost" -->
              port="6379" <!-- optional: defaults to "6379" -->
              database="0" <!-- optional: defaults to "0" -->
@@ -48,44 +48,6 @@ The Valve must be declared before the Manager.
 Copy the tomcat-redis-session-manager.jar and jedis-2.0.0.jar files into the `lib` directory of your Tomcat installation.
 
 Reboot the server, and sessions should now be stored in Redis.
-
-Session Change Tracking
------------------------
-
-As noted in the "Overview" section above, in order to prevent colliding writes, the Redis Session Manager only serializes the session object into Redis if the session object has changed (it always updates the expiration separately however.) This dirty tracking marks the session as needing serialization according to the following rules:
-
-* Calling `session.removeAttribute(key)` always marks the session as dirty (needing serialization.)
-* Calling `session.setAttribute(key, newAttributeValue)` marks the session as dirty if any of the following are true:
-    * `previousAttributeValue == null && newAttributeValue != null`
-    * `previousAttributeValue != null && newAttributeValue == null`
-    * `!newAttributeValue.getClass().isInstance(previousAttributeValue)`
-    * `!newAttributeValue.equals(previousAttributeValue)`
-
-This feature can have the unintended consequence of hiding writes if you implicitly change a key in the session or if the object's equality does not change even though the key is updated. For example, assuming the session already contains the key `"myArray"` with an Array instance as its corresponding value, and has been previously serialized, the following code would not cause the session to be serialized again:
-
-    List myArray = session.getAttribute("myArray");
-    myArray.add(additionalArrayValue);
-
-If your code makes these kind of changes, then the RedisSession provides a mechanism by which you can mark the session as dirty in order to guarantee serialization at the end of the request. For example:
-
-    List myArray = session.getAttribute("myArray");
-    myArray.add(additionalArrayValue);
-    session.setAttribute("__changed__");
-
-In order to not cause issues with an application that may already use the key `"__changed__"`, this feature is disabled by default. To enable this feature, simple call the following code in your application's initialization:
-
-    RedisSession.setManualDirtyTrackingSupportEnabled(true);
-
-This feature also allows the attribute key used to mark the session as dirty to be changed. For example, if you executed the following:
-
-    RedisSession.setManualDirtyTrackingAttributeKey("customDirtyFlag");
-
-Then the example above would look like this:
-
-    List myArray = session.getAttribute("myArray");
-    myArray.add(additionalArrayValue);
-    session.setAttribute("customDirtyFlag");
-
 
 Possible Issues
 ---------------
@@ -100,5 +62,7 @@ If you encounter errors, then you can force save the session early (before sendi
 
 Acknowledgements
 ----------------
+
+This project is loosely based on the Redis session manager developed by jcoleman, https://github.com/jcoleman/tomcat-redis-session-manager (originally forked from there), but has gone through significant refactoring, including a package name change.
 
 The architecture of this project was based on the Mongo-Tomcat-Sessions project found at https://github.com/dawsonsystems/Mongo-Tomcat-Sessions
