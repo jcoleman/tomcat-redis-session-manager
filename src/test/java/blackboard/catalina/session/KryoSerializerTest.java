@@ -1,5 +1,8 @@
-package com.radiadesign.catalina.session;
+package blackboard.catalina.session;
 
+import blackboard.catalina.session.KryoSerializer;
+import blackboard.catalina.session.RedisSession;
+import blackboard.catalina.session.RedisSessionFactory;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.Registration;
 import com.esotericsoftware.kryo.io.Input;
@@ -27,7 +30,7 @@ public class KryoSerializerTest
     Output output = mock( Output.class );
 
     KryoSerializer cut = new KryoSerializer();
-    cut.serializeFrom( session, kryo, output );
+    cut.writeSession( session, kryo, output );
 
     verify( kryo ).writeObject( output, session );
   }
@@ -46,7 +49,7 @@ public class KryoSerializerTest
     RedisSessionFactory factory = mock( RedisSessionFactory.class );
 
     KryoSerializer cut = new KryoSerializer();
-    cut.deserializeInto( factory, kryo, input );
+    cut.readSession( factory, kryo, input );
 
     verify( reg ).setInstantiator( any( ObjectInstantiator.class ) );
   }
@@ -65,7 +68,7 @@ public class KryoSerializerTest
     RedisSessionFactory factory = mock( RedisSessionFactory.class );
 
     KryoSerializer cut = new KryoSerializer();
-    cut.deserializeInto( factory, kryo, input );
+    cut.readSession( factory, kryo, input );
 
     verify( kryo ).readObject( input, RedisSession.class );
   }

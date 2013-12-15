@@ -1,4 +1,4 @@
-package com.radiadesign.catalina.session;
+package blackboard.catalina.session;
 
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.Registration;
@@ -12,7 +12,7 @@ import java.io.*;
 /**
  * KryoSerializer implements the Serializer interface using the ultra-fast Kryo framework.
  */
-public class KryoSerializer implements FactorySerializer
+public class KryoSerializer implements Serializer
 {
 
   // Keep Kryo instances on the thread so that we aren't continually creating
@@ -38,21 +38,14 @@ public class KryoSerializer implements FactorySerializer
     return new Kryo();
   }
 
-  @Override
-  public void setClassLoader( ClassLoader loader )
-  {
-    // NOOP - Don't need this
-  }
-
-  @Override
-  public final byte[] serializeFrom( HttpSession session ) throws IOException
+  public final byte[] writeSession( RedisSession session ) throws IOException
   {
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     Output output = new Output(new BufferedOutputStream(bos));
 
     try
     {
-      serializeFrom( session, kryo.get(), output );
+      writeSession( session, kryo.get(), output );
     }
     finally
     {
@@ -62,26 +55,19 @@ public class KryoSerializer implements FactorySerializer
     return bos.toByteArray();
   }
 
-  protected void serializeFrom( HttpSession session, Kryo kryo, Output output ) throws IOException
+  protected void writeSession( HttpSession session, Kryo kryo, Output output ) throws IOException
   {
     kryo.writeObject(output, (RedisSession) session);
   }
 
-  @Override
-  public final HttpSession deserializeInto( byte[] data, HttpSession session ) throws IOException, ClassNotFoundException
-  {
-    throw new UnsupportedOperationException();
-  }
-
-  @Override
-  public final RedisSession deserializeInto( byte[] data, final RedisSessionFactory sessionFactory ) throws IOException, ClassNotFoundException
+  public final RedisSession readSession( byte[] data, final RedisSessionFactory sessionFactory ) throws IOException, ClassNotFoundException
   {
     BufferedInputStream bis = new BufferedInputStream(new ByteArrayInputStream(data));
     Input input = new Input(bis);
 
     try
     {
-      return deserializeInto( sessionFactory, kryo.get(), input );
+      return readSession( sessionFactory, kryo.get(), input );
     }
     finally
     {
@@ -89,7 +75,7 @@ public class KryoSerializer implements FactorySerializer
     }
   }
 
-  protected RedisSession deserializeInto( final RedisSessionFactory sessionFactory, Kryo kryo, Input input ) throws IOException, ClassNotFoundException
+  protected RedisSession readSession( final RedisSessionFactory sessionFactory, Kryo kryo, Input input ) throws IOException, ClassNotFoundException
   {
     Registration reg = kryo.register( RedisSession.class );
     reg.setInstantiator( new ObjectInstantiator()
