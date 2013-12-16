@@ -182,7 +182,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
   }
 
   private byte[] getSessionKey( String sessionId ) {
-    return (managerId + "-" + sessionId).getBytes();
+    return (managerId + ":" + sessionId).getBytes();
   }
 
   @Override
