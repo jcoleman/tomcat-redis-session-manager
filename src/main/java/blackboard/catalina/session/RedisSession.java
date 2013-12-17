@@ -11,7 +11,7 @@ import java.util.HashMap;
 public class RedisSession extends StandardSession
 {
 
-  protected Boolean dirty;
+  protected boolean dirty = false;
 
   public RedisSession( Manager manager )
   {
@@ -19,7 +19,7 @@ public class RedisSession extends StandardSession
     resetDirtyTracking();
   }
 
-  public Boolean isDirty()
+  public boolean isDirty()
   {
     return dirty;
   }
