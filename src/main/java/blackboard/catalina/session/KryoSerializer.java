@@ -18,7 +18,8 @@ public class KryoSerializer implements Serializer
   // Keep Kryo instances on the thread so that we aren't continually creating
   // them - they are expensive.  Might consider changing this to a true
   // pool at some point.
-  private ThreadLocal<Kryo> kryo = new ThreadLocal<Kryo>() {
+  private ThreadLocal<Kryo> kryo = new ThreadLocal<Kryo>()
+  {
 
     @Override
     protected Kryo initialValue()
@@ -31,6 +32,7 @@ public class KryoSerializer implements Serializer
   /**
    * Implements the creation of the Kryo object.  Override this to implement special
    * processing logic for creating a Kryo.
+   *
    * @return a new Kryo object.
    */
   protected Kryo createKryo()
@@ -41,13 +43,12 @@ public class KryoSerializer implements Serializer
   public final byte[] writeSession( RedisSession session ) throws IOException
   {
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
-    Output output = new Output(new BufferedOutputStream(bos));
+    Output output = new Output( new BufferedOutputStream( bos ) );
 
     try
     {
       writeSession( session, kryo.get(), output );
-    }
-    finally
+    } finally
     {
       output.close();
     }
@@ -57,19 +58,18 @@ public class KryoSerializer implements Serializer
 
   protected void writeSession( HttpSession session, Kryo kryo, Output output ) throws IOException
   {
-    kryo.writeObject(output, (RedisSession) session);
+    kryo.writeObject( output, (RedisSession) session );
   }
 
   public final RedisSession readSession( byte[] data, final RedisSessionFactory sessionFactory ) throws IOException, ClassNotFoundException
   {
-    BufferedInputStream bis = new BufferedInputStream(new ByteArrayInputStream(data));
-    Input input = new Input(bis);
+    BufferedInputStream bis = new BufferedInputStream( new ByteArrayInputStream( data ) );
+    Input input = new Input( bis );
 
     try
     {
       return readSession( sessionFactory, kryo.get(), input );
-    }
-    finally
+    } finally
     {
       input.close();
     }

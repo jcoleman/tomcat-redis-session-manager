@@ -11,17 +11,21 @@ import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
 
 
-public class RedisSessionHandlerValve extends ValveBase {
-  private final Log log = LogFactory.getLog(RedisSessionManager.class);
+public class RedisSessionHandlerValve extends ValveBase
+{
+  private final Log log = LogFactory.getLog( RedisSessionManager.class );
 
   @Override
-  public void invoke(Request request, Response response) throws IOException, ServletException {
+  public void invoke( Request request, Response response ) throws IOException, ServletException
+  {
     RedisSessionManager manager = (RedisSessionManager) getContainer().getManager();
 
-    try {
+    try
+    {
       manager.beforeRequest( request );
-      getNext().invoke(request, response);
-    } finally {
+      getNext().invoke( request, response );
+    } finally
+    {
       manager.afterRequest( request );
     }
   }

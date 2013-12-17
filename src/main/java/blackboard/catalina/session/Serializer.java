@@ -2,10 +2,11 @@ package blackboard.catalina.session;
 
 import java.io.IOException;
 
-public interface Serializer {
+public interface Serializer
+{
 
-  byte[] writeSession(RedisSession session) throws IOException;
+  byte[] writeSession( RedisSession session ) throws IOException;
 
-  RedisSession readSession(byte[] data, RedisSessionFactory sessionFactory ) throws IOException, ClassNotFoundException;
+  RedisSession readSession( byte[] data, RedisSessionFactory sessionFactory ) throws IOException, ClassNotFoundException;
 
 }

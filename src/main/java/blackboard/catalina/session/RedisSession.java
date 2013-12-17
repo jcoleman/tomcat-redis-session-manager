@@ -1,44 +1,53 @@
 package blackboard.catalina.session;
 
 import java.security.Principal;
+
 import org.apache.catalina.Manager;
 import org.apache.catalina.session.StandardSession;
+
 import java.util.HashMap;
 
 
-public class RedisSession extends StandardSession {
+public class RedisSession extends StandardSession
+{
 
   protected Boolean dirty;
 
-  public RedisSession(Manager manager) {
-    super(manager);
+  public RedisSession( Manager manager )
+  {
+    super( manager );
     resetDirtyTracking();
   }
 
-  public Boolean isDirty() {
+  public Boolean isDirty()
+  {
     return dirty;
   }
 
-  public void resetDirtyTracking() {
+  public void resetDirtyTracking()
+  {
     dirty = false;
   }
 
   @Override
-  public void setAttribute(String key, Object value) {
+  public void setAttribute( String key, Object value )
+  {
     dirty = true;
     super.setAttribute( key, value );
   }
 
   @Override
-  public void removeAttribute(String name) {
+  public void removeAttribute( String name )
+  {
     dirty = true;
-    super.removeAttribute(name);
+    super.removeAttribute( name );
   }
 
   @Override
-  public void setPrincipal(Principal principal) {
+  public void setPrincipal( Principal principal )
+  {
     dirty = true;
-    super.setPrincipal(principal);
+    super.setPrincipal( principal );
   }
 
 }

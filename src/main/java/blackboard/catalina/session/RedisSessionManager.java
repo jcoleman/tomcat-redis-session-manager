@@ -23,9 +23,10 @@ import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
 
 
-public class RedisSessionManager extends ManagerBase implements Lifecycle, RedisSessionFactory {
+public class RedisSessionManager extends ManagerBase implements Lifecycle, RedisSessionFactory
+{
 
-  private final Log log = LogFactory.getLog(RedisSessionManager.class);
+  private final Log log = LogFactory.getLog( RedisSessionManager.class );
 
   protected String host = "localhost";
   protected int port = 6379;
@@ -33,69 +34,80 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
   protected String password = null;
   protected int timeout = Protocol.DEFAULT_TIMEOUT;
   protected JedisPool connectionPool;
-
   protected String managerId;
   protected Serializer serializer;
-
   protected String serializationStrategyClass = JavaSerializer.class.getName();
   protected Set<String> sessionsToLoad = new HashSet<String>();
 
   /**
    * The lifecycle event support for this component.
    */
-  protected LifecycleSupport lifecycle = new LifecycleSupport(this);
+  protected LifecycleSupport lifecycle = new LifecycleSupport( this );
 
-  public String getHost() {
+
+  public String getHost()
+  {
     return host;
   }
 
-  public void setHost(String host) {
+  public void setHost( String host )
+  {
     this.host = host;
   }
 
-  public int getPort() {
+  public int getPort()
+  {
     return port;
   }
 
-  public void setPort(int port) {
+  public void setPort( int port )
+  {
     this.port = port;
   }
 
-  public int getDatabase() {
+  public int getDatabase()
+  {
     return database;
   }
 
-  public void setDatabase(int database) {
+  public void setDatabase( int database )
+  {
     this.database = database;
   }
 
-  public int getTimeout() {
+  public int getTimeout()
+  {
     return timeout;
   }
 
-  public void setTimeout(int timeout) {
+  public void setTimeout( int timeout )
+  {
     this.timeout = timeout;
   }
 
-  public String getPassword() {
+  public String getPassword()
+  {
     return password;
   }
 
-  public void setPassword(String password) {
+  public void setPassword( String password )
+  {
     this.password = password;
   }
 
-  public void setSerializationStrategyClass(String strategy) {
+  public void setSerializationStrategyClass( String strategy )
+  {
     this.serializationStrategyClass = strategy;
   }
 
   @Override
-  public void load() throws ClassNotFoundException, IOException {
-
+  public void load() throws ClassNotFoundException, IOException
+  {
   }
 
   @Override
-  public void unload() throws IOException {
+  public void unload() throws IOException
+  {
 
   }
 
@@ -105,8 +117,9 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
    * @param listener The listener to add
    */
   @Override
-  public void addLifecycleListener(LifecycleListener listener) {
-    lifecycle.addLifecycleListener(listener);
+  public void addLifecycleListener( LifecycleListener listener )
+  {
+    lifecycle.addLifecycleListener( listener );
   }
 
   /**
@@ -114,10 +127,10 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
    * Lifecycle has no listeners registered, a zero-length array is returned.
    */
   @Override
-  public LifecycleListener[] findLifecycleListeners() {
+  public LifecycleListener[] findLifecycleListeners()
+  {
     return lifecycle.findLifecycleListeners();
   }
-
 
   /**
    * Remove a lifecycle event listener from this component.
@@ -125,54 +138,61 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
    * @param listener The listener to remove
    */
   @Override
-  public void removeLifecycleListener(LifecycleListener listener) {
-    lifecycle.removeLifecycleListener(listener);
+  public void removeLifecycleListener( LifecycleListener listener )
+  {
+    lifecycle.removeLifecycleListener( listener );
   }
 
   /**
    * Start this component and implement the requirements
    * of {@link org.apache.catalina.util.LifecycleBase#startInternal()}.
    *
-   * @exception LifecycleException if this component detects a fatal error
-   *  that prevents this component from being used
+   * @throws LifecycleException if this component detects a fatal error
+   *                            that prevents this component from being used
    */
   @Override
-  protected synchronized void startInternal() throws LifecycleException {
+  protected synchronized void startInternal() throws LifecycleException
+  {
     super.startInternal();
 
-    setState(LifecycleState.STARTING);
+    setState( LifecycleState.STARTING );
 
-    try {
+    try
+    {
       initializeSerializer();
-    } catch (Exception e) {
-      log.fatal("Unable to load serializer", e);
-      throw new LifecycleException(e);
+    } catch ( Exception e )
+    {
+      log.fatal( "Unable to load serializer", e );
+      throw new LifecycleException( e );
     }
 
     initializeDatabaseConnection();
-    setDistributable(true);
+    setDistributable( true );
     managerId = generateSessionId();
   }
-
 
   /**
    * Stop this component and implement the requirements
    * of {@link org.apache.catalina.util.LifecycleBase#stopInternal()}.
    *
-   * @exception LifecycleException if this component detects a fatal error
-   *  that prevents this component from being used
+   * @throws LifecycleException if this component detects a fatal error
+   *                            that prevents this component from being used
    */
   @Override
-  protected synchronized void stopInternal() throws LifecycleException {
-    if (log.isDebugEnabled()) {
-      log.debug("Stopping");
+  protected synchronized void stopInternal() throws LifecycleException
+  {
+    if ( log.isDebugEnabled() )
+    {
+      log.debug( "Stopping" );
     }
 
-    setState(LifecycleState.STOPPING);
+    setState( LifecycleState.STOPPING );
 
-    try {
+    try
+    {
       connectionPool.destroy();
-    } catch(Exception e) {
+    } catch ( Exception e )
+    {
       // Do nothing.
       log.error( e.getMessage(), e );
     }
@@ -181,8 +201,9 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
     super.stopInternal();
   }
 
-  private byte[] getSessionKey( String sessionId ) {
-    return (managerId + ":" + sessionId).getBytes();
+  byte[] getSessionKey( String sessionId )
+  {
+    return ( managerId + ":" + sessionId ).getBytes();
   }
 
   @Override
@@ -207,27 +228,29 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
     return super.findSession( id );
   }
 
-  private void loadSession(final String id) {
+  void loadSession( final String id )
+  {
     execute( new SessionOperation()
     {
 
       @Override
       public void execute( Jedis jedis ) throws Exception
       {
-        byte[] data = jedis.get(getSessionKey( id ));
+        byte[] data = jedis.get( getSessionKey( id ) );
 
-        if (data == null) {
-          log.trace("Session " + id + " not found in Redis");
+        if ( data == null )
+        {
+          log.trace( "Session " + id + " not found in Redis" );
           return;
         }
 
-        log.trace("Deserializing session " + id + " from Redis");
-        RedisSession session = (RedisSession)serializer.readSession( data, RedisSessionManager.this );
+        log.trace( "Deserializing session " + id + " from Redis" );
+        RedisSession session = (RedisSession) serializer.readSession( data, RedisSessionManager.this );
 
         session.setId( id );
         session.setNew( false );
         session.access();
-        session.setValid(true);
+        session.setValid( true );
         session.resetDirtyTracking();
 
         sessionsToLoad.remove( id );
@@ -237,18 +260,25 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
     } );
   }
 
-  private void saveSession(Session session) {
-    log.trace("Saving session " + session + " into Redis");
+  RedisSession getSessionInternal( String id )
+  {
+    return (RedisSession) sessions.get( id );
+  }
+
+  void saveSession( Session session )
+  {
+    log.trace( "Saving session " + session + " into Redis" );
 
     final RedisSession redisSession = (RedisSession) session;
-    if (redisSession.isDirty()) {
+    if ( redisSession.isDirty() )
+    {
       execute( new SessionOperation()
       {
 
         @Override
         public void execute( Jedis jedis ) throws Exception
         {
-          jedis.set(getSessionKey( redisSession.getId() ), serializer.writeSession( redisSession ));
+          jedis.set( getSessionKey( redisSession.getId() ), serializer.writeSession( redisSession ) );
           redisSession.resetDirtyTracking();
         }
 
@@ -257,7 +287,8 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
   }
 
   @Override
-  public void remove(final Session session, boolean update) {
+  public void remove( final Session session, boolean update )
+  {
     super.remove( session, update );
 
     log.trace( "Removing session ID : " + session.getId() );
@@ -274,78 +305,104 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
     } );
   }
 
-  
-  private void execute( SessionOperation operation )
+  void returnConnection( Jedis jedis, boolean error )
+  {
+    if ( jedis == null )
+    {
+      return;
+    }
+
+    if ( error )
+    {
+      connectionPool.returnBrokenResource( jedis );
+    } else
+    {
+      connectionPool.returnResource( jedis );
+    }
+  }
+
+  protected void execute( SessionOperation operation )
   {
     Jedis jedis = null;
     boolean error = false;
 
-    try {
+    try
+    {
       jedis = connectionPool.getResource();
 
-      if (getDatabase() != 0) {
-        jedis.select(getDatabase());
+      if ( getDatabase() != 0 )
+      {
+        jedis.select( getDatabase() );
       }
 
       operation.execute( jedis );
-    } catch ( Exception err ) {
+    } catch ( Exception err )
+    {
       error = true;
-      throw new IllegalStateException( err );
-    } finally {
-      if ( jedis != null )
-      {
-        if (error) {
-          connectionPool.returnBrokenResource(jedis);
-        } else {
-          connectionPool.returnResource(jedis);
-        }
-      }
+      operation.onFailure( jedis, err );
+    } finally
+    {
+      returnConnection( jedis, error );
     }
   }
 
   public void beforeRequest( Request request ) throws IOException
   {
-    sessionsToLoad.add( request.getRequestedSessionId() );
+    if ( request.getRequestedSessionId() != null )
+    {
+      sessionsToLoad.add( request.getRequestedSessionId() );
+    }
   }
 
   public void afterRequest( Request request ) throws IOException
   {
     sessionsToLoad.remove( request.getRequestedSessionId() );
-    RedisSession session = (RedisSession)request.getSessionInternal( false );
+    RedisSession session = (RedisSession) request.getSessionInternal( false );
 
-    if (session != null && session.isValid() && session.isDirty() ) {
+    if ( session != null && session.isValid() && session.isDirty() )
+    {
       saveSession( session );
     }
   }
 
-  private void initializeDatabaseConnection() throws LifecycleException {
-    try {
+  void initializeDatabaseConnection() throws LifecycleException
+  {
+    try
+    {
       // TODO: Allow configuration of pool (such as size...)
-      connectionPool = new JedisPool(new JedisPoolConfig(), getHost(), getPort(), getTimeout(), getPassword());
-    } catch (Exception e) {
+      connectionPool = new JedisPool( new JedisPoolConfig(), getHost(), getPort(), getTimeout(), getPassword() );
+    } catch ( Exception e )
+    {
       log.error( e.getMessage(), e );
-      throw new LifecycleException("Error Connecting to Redis", e);
+      throw new LifecycleException( "Error Connecting to Redis", e );
     }
   }
 
-  private void initializeSerializer() throws ClassNotFoundException, IllegalAccessException, InstantiationException {
-    log.info("Attempting to use serializer :" + serializationStrategyClass);
-    serializer = (Serializer) Class.forName(serializationStrategyClass).newInstance();
+  void initializeSerializer() throws ClassNotFoundException, IllegalAccessException, InstantiationException
+  {
+    log.info( "Attempting to use serializer :" + serializationStrategyClass );
+    serializer = (Serializer) Class.forName( serializationStrategyClass ).newInstance();
   }
 
   public ClassLoader getSessionClassLoader()
   {
-    if (container == null) {
+    if ( container == null )
+    {
       return null;
     }
 
     return container.getLoader().getClassLoader();
   }
 
-  private static interface SessionOperation
+  protected abstract class SessionOperation
   {
 
-    public void execute( Jedis jedis ) throws Exception;
+    public abstract void execute( Jedis jedis ) throws Exception;
+
+    public void onFailure( Jedis jedis, Exception err )
+    {
+      getContainer().getLogger().error( err.getMessage(), err );
+    }
 
   }
 
