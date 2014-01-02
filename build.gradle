@@ -1,6 +1,8 @@
 apply plugin: 'java'
 apply plugin: 'idea'
+apply plugin: 'maven'
 
+group = 'blackboard.tomcat'
 version = '1.2'
 
 repositories {
@@ -18,4 +20,12 @@ dependencies {
   testCompile 'org.hamcrest:hamcrest-library:1.3'
   testCompile 'org.mockito:mockito-all:1.9.5'
   testCompile group: 'org.apache.tomcat', name: 'tomcat-coyote', version: '7.0.27'
+}
+
+uploadArchives {
+    repositories.mavenDeployer {
+        repository(url: "http://maven.pd.local/content/repositories/releases") {
+            authentication(userName: project.NEXUS_USERNAME, password: project.NEXUS_PASSWORD)
+        }
+    }
 }
