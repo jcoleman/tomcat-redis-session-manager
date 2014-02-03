@@ -259,20 +259,32 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
     Boolean error = true;
     Jedis jedis = null;
+    String newSessionId = sessionId;
 
     try {
       jedis = acquireConnection();
 
       // Ensure generation of a unique session identifier.
-      do {
-        if (null == sessionId) {
-          sessionId = generateSessionId();
+      if (sessionId == null) {
+        newSessionId = generateSessionId();
+      }
+      if (jvmRoute != null) {
+        newSessionId += '.' + jvmRoute;
+      }
+
+      // 1 = key set; 0 = key already existed
+      while (jedis.setnx(newSessionId.getBytes(), NULL_SESSION) == 0L) {
+        // retry or not
+        if (sessionId == null) {
+          newSessionId = generateSessionId();
+        } else {
+          return null;
         }
 
         if (jvmRoute != null) {
-          sessionId += '.' + jvmRoute;
+          newSessionId += '.' + jvmRoute;
         }
-      } while (jedis.setnx(sessionId.getBytes(), NULL_SESSION) == 1L); // 1 = key set; 0 = key already existed
+      }
 
       /* Even though the key is set in Redis, we are not going to flag
          the current thread as having had the session persisted since
@@ -282,11 +294,11 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
       error = false;
 
-      session.setId(sessionId);
+      session.setId(newSessionId);
       session.tellNew();
 
       currentSession.set(session);
-      currentSessionId.set(sessionId);
+      currentSessionId.set(newSessionId);
       currentSessionIsPersisted.set(false);
     } finally {
       if (jedis != null) {
