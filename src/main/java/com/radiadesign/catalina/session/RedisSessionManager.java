@@ -17,7 +17,6 @@ import redis.clients.jedis.Protocol;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Set;
 
@@ -31,11 +30,27 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
   private final Log log = LogFactory.getLog(RedisSessionManager.class);
 
+  enum SessionPersistPolicy {
+    DEFAULT,
+    ALWAYS;
+
+    static SessionPersistPolicy fromName(String name) {
+      for (SessionPersistPolicy policy : SessionPersistPolicy.values()) {
+        if (policy.name().equalsIgnoreCase(name)) {
+          return policy;
+        }
+      }
+      throw new IllegalArgumentException("Invalid session persist policy [" + name + "]. Must be one of " + Arrays.asList(SessionPersistPolicy.values()) + ". Set it as Manager attribute with name sessionPersistPolicy.");
+    }
+  }
+
   protected String host = "localhost";
   protected int port = 6379;
   protected int database = 0;
   protected String password = null;
   protected int timeout = Protocol.DEFAULT_TIMEOUT;
+
+  protected SessionPersistPolicy sessionPersistPolicy = SessionPersistPolicy.ALWAYS;
   protected JedisPool connectionPool;
 
   protected RedisSessionHandlerValve handlerValve;
@@ -91,6 +106,10 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
   public void setPassword(String password) {
     this.password = password;
+  }
+
+  public void setSessionPersistPolicy(String policyName) {
+    this.sessionPersistPolicy = SessionPersistPolicy.fromName(policyName);
   }
 
   public void setSerializationStrategyClass(String strategy) {
@@ -456,7 +475,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
       jedis = acquireConnection();
 
       Boolean isCurrentSessionPersisted = this.currentSessionIsPersisted.get();
-      if (sessionIsDirty || (isCurrentSessionPersisted == null || !isCurrentSessionPersisted)) {
+      if (SessionPersistPolicy.ALWAYS == sessionPersistPolicy ||  sessionIsDirty || (isCurrentSessionPersisted == null || !isCurrentSessionPersisted)) {
         jedis.set(binaryId, serializer.serializeFrom(redisSession));
       }
 
