@@ -50,7 +50,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
   protected String password = null;
   protected int timeout = Protocol.DEFAULT_TIMEOUT;
 
-  protected SessionPersistPolicy sessionPersistPolicy = SessionPersistPolicy.ALWAYS;
+  protected SessionPersistPolicy sessionPersistPolicy = SessionPersistPolicy.DEFAULT;
   protected JedisPool connectionPool;
 
   protected RedisSessionHandlerValve handlerValve;
