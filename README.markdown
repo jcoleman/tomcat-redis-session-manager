@@ -41,7 +41,8 @@ Add the following into your Tomcat context.xml (or the context block of the serv
              host="localhost" <!-- optional: defaults to "localhost" -->
              port="6379" <!-- optional: defaults to "6379" -->
              database="0" <!-- optional: defaults to "0" -->
-             maxInactiveInterval="60" <!-- optional: defaults to "60" (in seconds) --> />
+             maxInactiveInterval="60" <!-- optional: defaults to "60" (in seconds) -->
+             sessionPersistPolicy="ALWAYS" <!-- optional: defaults to "DEFAULT" --> />
 
 The Valve must be declared before the Manager.
 
@@ -85,6 +86,13 @@ Then the example above would look like this:
     List myArray = session.getAttribute("myArray");
     myArray.add(additionalArrayValue);
     session.setAttribute("customDirtyFlag");
+
+In order to override the persist behaviour described above is to set the `sessionPersistPolicy` attribute in the `<Manager.../>` to the `ALWAYS` value. When this is true, the session is persisted always, no exceptions. This in turn allows for the following behaviour:
+
+    Payload payload = (Payload)session.getAttribute("payload");
+    payload.setCounter(3);
+
+This way all changes will be persisted without having to explicitly call `session.setAttribute()` again.
 
 
 Possible Issues
