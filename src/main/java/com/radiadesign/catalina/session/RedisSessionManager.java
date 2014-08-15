@@ -415,7 +415,15 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         log.trace("Session " + id + " not found in Redis");
         session = null;
       } else if (Arrays.equals(NULL_SESSION, data)) {
-        throw new IllegalStateException("Race condition encountered: attempted to load session[" + id + "] which has been created but not yet serialized.");
+        session = (RedisSession)createEmptySession();
+        //serializer.deserializeInto(data, session);
+        session.setId(id);
+        session.setNew(false);
+        session.setMaxInactiveInterval(getMaxInactiveInterval() * 1000);
+        session.access();
+        session.setValid(true);
+        session.resetDirtyTracking();
+        //throw new IllegalStateException("Race condition encountered: attempted to load session[" + id + "] which has been created but not yet serialized.");
       } else {
         log.trace("Deserializing session " + id + " from Redis");
         session = (RedisSession)createEmptySession();
@@ -438,6 +446,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
       return session;
     } catch (IOException e) {
+    	e.printStackTrace();
       log.fatal(e.getMessage());
       throw e;
     } catch (ClassNotFoundException ex) {
