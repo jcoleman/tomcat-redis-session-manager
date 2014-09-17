@@ -39,14 +39,16 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
   protected JedisPool connectionPool;
 
   protected RedisSessionHandlerValve handlerValve;
-  protected ThreadLocal<RedisSession> currentSession = new ThreadLocal<RedisSession>();
-  protected ThreadLocal<String> currentSessionId = new ThreadLocal<String>();
-  protected ThreadLocal<Boolean> currentSessionIsPersisted = new ThreadLocal<Boolean>();
+  protected ThreadLocal<RedisSession> currentSession = new ThreadLocal<>();
+  protected ThreadLocal<String> currentSessionId = new ThreadLocal<>();
+  protected ThreadLocal<Boolean> currentSessionIsPersisted = new ThreadLocal<>();
   protected Serializer serializer;
 
   protected static String name = "RedisSessionManager";
 
   protected String serializationStrategyClass = "com.radiadesign.catalina.session.JavaSerializer";
+
+  protected boolean saveOnChange = false;
 
   /**
    * The lifecycle event support for this component.
@@ -95,6 +97,14 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
   public void setSerializationStrategyClass(String strategy) {
     this.serializationStrategyClass = strategy;
+  }
+
+  public boolean getSaveOnChange() {
+    return saveOnChange;
+  }
+
+  public void setSaveOnChange(boolean saveOnChange) {
+    this.saveOnChange = saveOnChange;
   }
 
   @Override
@@ -201,13 +211,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
     try {
       initializeSerializer();
-    } catch (ClassNotFoundException e) {
-      log.fatal("Unable to load serializer", e);
-      throw new LifecycleException(e);
-    } catch (InstantiationException e) {
-      log.fatal("Unable to load serializer", e);
-      throw new LifecycleException(e);
-    } catch (IllegalAccessException e) {
+    } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
       log.fatal("Unable to load serializer", e);
       throw new LifecycleException(e);
     }
@@ -246,33 +250,32 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
   }
 
   @Override
-  public Session createSession(String sessionId) {
-    RedisSession session = (RedisSession)createEmptySession();
-
-    // Initialize the properties of the new session and return it
-    session.setNew(true);
-    session.setValid(true);
-    session.setCreationTime(System.currentTimeMillis());
-    session.setMaxInactiveInterval(getMaxInactiveInterval());
-
+  public Session createSession(String requestedSessionId) {
+    RedisSession session = null;
+    String sessionId = null;
     String jvmRoute = getJvmRoute();
 
     Boolean error = true;
     Jedis jedis = null;
-
     try {
       jedis = acquireConnection();
 
       // Ensure generation of a unique session identifier.
-      do {
-        if (null == sessionId) {
-          sessionId = generateSessionId();
-        }
-
+      if (null == requestedSessionId) {
         if (jvmRoute != null) {
-          sessionId += '.' + jvmRoute;
+          sessionId = requestedSessionId + '.' + jvmRoute;
         }
-      } while (jedis.setnx(sessionId.getBytes(), NULL_SESSION) == 1L); // 1 = key set; 0 = key already existed
+        if (jedis.setnx(sessionId.getBytes(), NULL_SESSION) == 0L) {
+          sessionId = null;
+        }
+      } else {
+        do {
+          sessionId = generateSessionId();
+          if (jvmRoute != null) {
+            sessionId += '.' + jvmRoute;
+          }
+        } while (jedis.setnx(sessionId.getBytes(), NULL_SESSION) == 0L); // 1 = key set; 0 = key already existed
+      }
 
       /* Even though the key is set in Redis, we are not going to flag
          the current thread as having had the session persisted since
@@ -282,12 +285,27 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
       error = false;
 
-      session.setId(sessionId);
-      session.tellNew();
+      if (null != sessionId) {
+        session = (RedisSession)createEmptySession();
+        session.setNew(true);
+        session.setValid(true);
+        session.setCreationTime(System.currentTimeMillis());
+        session.setMaxInactiveInterval(getMaxInactiveInterval());
+        session.setId(sessionId);
+        session.tellNew();
+      }
 
       currentSession.set(session);
       currentSessionId.set(sessionId);
       currentSessionIsPersisted.set(false);
+
+      if (null != session && this.getSaveOnChange()) {
+        try {
+          save(session);
+        } catch (IOException ex) {
+          log.error("Error saving newly created session (triggered by saveOnChange=true): " + ex.getMessage());
+        }
+      }
     } finally {
       if (jedis != null) {
         returnConnection(jedis, error);
@@ -326,6 +344,9 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
       if (session != null) {
         currentSessionIsPersisted.set(true);
+      } else {
+        currentSessionIsPersisted.set(false);
+        id = null;
       }
     }
 
