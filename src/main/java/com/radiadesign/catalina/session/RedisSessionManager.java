@@ -17,7 +17,6 @@ import redis.clients.jedis.Protocol;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Set;
 
@@ -31,11 +30,27 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
   private final Log log = LogFactory.getLog(RedisSessionManager.class);
 
+  enum SessionPersistPolicy {
+    DEFAULT,
+    ALWAYS;
+
+    static SessionPersistPolicy fromName(String name) {
+      for (SessionPersistPolicy policy : SessionPersistPolicy.values()) {
+        if (policy.name().equalsIgnoreCase(name)) {
+          return policy;
+        }
+      }
+      throw new IllegalArgumentException("Invalid session persist policy [" + name + "]. Must be one of " + Arrays.asList(SessionPersistPolicy.values()) + ". Set it as Manager attribute with name sessionPersistPolicy.");
+    }
+  }
+
   protected String host = "localhost";
   protected int port = 6379;
   protected int database = 0;
   protected String password = null;
   protected int timeout = Protocol.DEFAULT_TIMEOUT;
+
+  protected SessionPersistPolicy sessionPersistPolicy = SessionPersistPolicy.DEFAULT;
   protected JedisPool connectionPool;
 
   protected RedisSessionHandlerValve handlerValve;
@@ -93,6 +108,10 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
   public void setPassword(String password) {
     this.password = password;
+  }
+
+  public void setSessionPersistPolicy(String policyName) {
+    this.sessionPersistPolicy = SessionPersistPolicy.fromName(policyName);
   }
 
   public void setSerializationStrategyClass(String strategy) {
@@ -417,7 +436,15 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         log.trace("Session " + id + " not found in Redis");
         session = null;
       } else if (Arrays.equals(NULL_SESSION, data)) {
-        throw new IllegalStateException("Race condition encountered: attempted to load session[" + id + "] which has been created but not yet serialized.");
+        session = (RedisSession)createEmptySession();
+        //serializer.deserializeInto(data, session);
+        session.setId(id);
+        session.setNew(false);
+        session.setMaxInactiveInterval(getMaxInactiveInterval() * 1000);
+        session.access();
+        session.setValid(true);
+        session.resetDirtyTracking();
+        //throw new IllegalStateException("Race condition encountered: attempted to load session[" + id + "] which has been created but not yet serialized.");
       } else {
         log.trace("Deserializing session " + id + " from Redis");
         session = (RedisSession)createEmptySession();
@@ -440,6 +467,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
       return session;
     } catch (IOException e) {
+    	e.printStackTrace();
       log.fatal(e.getMessage());
       throw e;
     } catch (ClassNotFoundException ex) {
@@ -477,7 +505,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
       jedis = acquireConnection();
 
       Boolean isCurrentSessionPersisted = this.currentSessionIsPersisted.get();
-      if (sessionIsDirty || (isCurrentSessionPersisted == null || !isCurrentSessionPersisted)) {
+      if (SessionPersistPolicy.ALWAYS == sessionPersistPolicy ||  sessionIsDirty || (isCurrentSessionPersisted == null || !isCurrentSessionPersisted)) {
         jedis.set(binaryId, serializer.serializeFrom(redisSession));
       }
 

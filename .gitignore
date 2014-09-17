@@ -1,2 +1,5 @@
 .gradle/*
 build/*
+.idea/*
+*.iml
+target/*
