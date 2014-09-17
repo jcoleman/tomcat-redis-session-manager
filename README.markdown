@@ -98,7 +98,10 @@ This condition will be detected by the session manager and a java.lang.IllegalSt
 
 Normally this should be incredibly unlikely (insert joke about programmers and "this should never happen" statements here) since the connection to save the session into Redis is almost guaranteed to be faster than the latency between a client receiving the response, processing it, and starting a new request.
 
-If you encounter errors, then you can force save the session early (before sending a response to the client) then you can retrieve the current session, and call `currentSession.manager.save(currentSession)` to synchronously eliminate the race condition. Note: this will only work directly if your application has the actual session object directly exposed. Many frameworks (and often even Tomcat) will expose the session in their own wrapper HttpSession implementing class. You may be able to dig through these layers to expose the actual underlying RedisSession instance--if so, then using that instance will allow you to implement the workaround.
+Possible solutions:
+
+- Enable the "save on change" feature by setting `saveOnChange` to `true` in your manager declaration in Tomcat's context.xml. Using this feature will degrade performance slightly as any change to the session will save the session synchronously to Redis, and technically this will still exhibit slight race condition behavior, but it eliminates as much possiblity of errors occurring as possible.
+- If you encounter errors, then you can force save the session early (before sending a response to the client) then you can retrieve the current session, and call `currentSession.manager.save(currentSession)` to synchronously eliminate the race condition. Note: this will only work directly if your application has the actual session object directly exposed. Many frameworks (and often even Tomcat) will expose the session in their own wrapper HttpSession implementing class. You may be able to dig through these layers to expose the actual underlying RedisSession instance--if so, then using that instance will allow you to implement the workaround.
 
 Acknowledgements
 ----------------

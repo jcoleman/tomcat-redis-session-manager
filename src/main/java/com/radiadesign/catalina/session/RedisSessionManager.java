@@ -48,6 +48,8 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
   protected String serializationStrategyClass = "com.radiadesign.catalina.session.JavaSerializer";
 
+  protected boolean saveOnChange = false;
+
   /**
    * The lifecycle event support for this component.
    */
@@ -95,6 +97,14 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
   public void setSerializationStrategyClass(String strategy) {
     this.serializationStrategyClass = strategy;
+  }
+
+  public boolean getSaveOnChange() {
+    return saveOnChange;
+  }
+
+  public void setSaveOnChange(boolean saveOnChange) {
+    this.saveOnChange = saveOnChange;
   }
 
   @Override
@@ -282,6 +292,14 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
       currentSession.set(session);
       currentSessionId.set(sessionId);
       currentSessionIsPersisted.set(false);
+
+      if (this.getSaveOnChange()) {
+        try {
+          save(session);
+        } catch (IOException ex) {
+          log.error("Error saving newly created session (triggered by saveOnChange=true): " + ex.getMessage());
+        }
+      }
     } finally {
       if (jedis != null) {
         returnConnection(jedis, error);
