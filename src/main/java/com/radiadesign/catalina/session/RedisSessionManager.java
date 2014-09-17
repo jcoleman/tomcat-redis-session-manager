@@ -250,33 +250,32 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
   }
 
   @Override
-  public Session createSession(String sessionId) {
-    RedisSession session = (RedisSession)createEmptySession();
-
-    // Initialize the properties of the new session and return it
-    session.setNew(true);
-    session.setValid(true);
-    session.setCreationTime(System.currentTimeMillis());
-    session.setMaxInactiveInterval(getMaxInactiveInterval());
-
+  public Session createSession(String requestedSessionId) {
+    RedisSession session = null;
+    String sessionId = null;
     String jvmRoute = getJvmRoute();
 
     Boolean error = true;
     Jedis jedis = null;
-
     try {
       jedis = acquireConnection();
 
       // Ensure generation of a unique session identifier.
-      do {
-        if (null == sessionId) {
-          sessionId = generateSessionId();
-        }
-
+      if (null == requestedSessionId) {
         if (jvmRoute != null) {
-          sessionId += '.' + jvmRoute;
+          sessionId = requestedSessionId + '.' + jvmRoute;
         }
-      } while (jedis.setnx(sessionId.getBytes(), NULL_SESSION) == 1L); // 1 = key set; 0 = key already existed
+        if (jedis.setnx(sessionId.getBytes(), NULL_SESSION) == 0L) {
+          sessionId = null;
+        }
+      } else {
+        do {
+          sessionId = generateSessionId();
+          if (jvmRoute != null) {
+            sessionId += '.' + jvmRoute;
+          }
+        } while (jedis.setnx(sessionId.getBytes(), NULL_SESSION) == 0L); // 1 = key set; 0 = key already existed
+      }
 
       /* Even though the key is set in Redis, we are not going to flag
          the current thread as having had the session persisted since
@@ -286,14 +285,21 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
       error = false;
 
-      session.setId(sessionId);
-      session.tellNew();
+      if (null != sessionId) {
+        session = (RedisSession)createEmptySession();
+        session.setNew(true);
+        session.setValid(true);
+        session.setCreationTime(System.currentTimeMillis());
+        session.setMaxInactiveInterval(getMaxInactiveInterval());
+        session.setId(sessionId);
+        session.tellNew();
+      }
 
       currentSession.set(session);
       currentSessionId.set(sessionId);
       currentSessionIsPersisted.set(false);
 
-      if (this.getSaveOnChange()) {
+      if (null != session && this.getSaveOnChange()) {
         try {
           save(session);
         } catch (IOException ex) {
