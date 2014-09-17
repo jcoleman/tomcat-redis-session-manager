@@ -344,6 +344,9 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
       if (session != null) {
         currentSessionIsPersisted.set(true);
+      } else {
+        currentSessionIsPersisted.set(false);
+        id = null;
       }
     }
 
