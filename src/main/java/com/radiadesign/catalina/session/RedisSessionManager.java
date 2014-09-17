@@ -39,9 +39,9 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
   protected JedisPool connectionPool;
 
   protected RedisSessionHandlerValve handlerValve;
-  protected ThreadLocal<RedisSession> currentSession = new ThreadLocal<RedisSession>();
-  protected ThreadLocal<String> currentSessionId = new ThreadLocal<String>();
-  protected ThreadLocal<Boolean> currentSessionIsPersisted = new ThreadLocal<Boolean>();
+  protected ThreadLocal<RedisSession> currentSession = new ThreadLocal<>();
+  protected ThreadLocal<String> currentSessionId = new ThreadLocal<>();
+  protected ThreadLocal<Boolean> currentSessionIsPersisted = new ThreadLocal<>();
   protected Serializer serializer;
 
   protected static String name = "RedisSessionManager";
@@ -201,13 +201,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
     try {
       initializeSerializer();
-    } catch (ClassNotFoundException e) {
-      log.fatal("Unable to load serializer", e);
-      throw new LifecycleException(e);
-    } catch (InstantiationException e) {
-      log.fatal("Unable to load serializer", e);
-      throw new LifecycleException(e);
-    } catch (IllegalAccessException e) {
+    } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
       log.fatal("Unable to load serializer", e);
       throw new LifecycleException(e);
     }
