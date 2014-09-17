@@ -18,10 +18,12 @@ Tomcat Versions
 This project supports both Tomcat 6 and Tomcat 7. Starting at project version 1.1, precompiled JAR downloads are available for either version of Tomcat while project versions before 1.1 are only available for Tomcat 6.
 
 The official release branches in Git are as follows:
-* `tomcat-6`: Continuing work for Tomcat 6 releases. Compatible with Java 6.
-* `master`: Continuing work for Tomcat 7 releases. Compatible with Java 6 or 7.
-* `tomcat-7`: Finalized; has now been merged into `master`. Compatible with Java 6 or 7.
-* `java-7`: All of the work from master for Tomcat 7 but taking advantage of new features in Java 7. Compatible with Java 7 only.
+* `master`: Continuing work for Tomcat 7 releases. Compatible with Java 7.
+* `tomcat-6`: Deprecated; may accept submitted patches, but no new work is being done on this branch. Compatible with Tomcat 6 and Java 6.
+
+Finalized branches include:
+* `tomcat-7`: Has been merged into `master`. Compatible with Java 6 or 7.
+* `java-7`: Has been merged into `master`. All of the work from master for Tomcat 7 but taking advantage of new features in Java 7. Compatible with Java 7 only.
 
 Architecture
 ------------
