@@ -261,9 +261,10 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
       jedis = acquireConnection();
 
       // Ensure generation of a unique session identifier.
-      if (null == requestedSessionId) {
+      if (null != requestedSessionId) {
+        sessionId = requestedSessionId;
         if (jvmRoute != null) {
-          sessionId = requestedSessionId + '.' + jvmRoute;
+          sessionId += '.' + jvmRoute;
         }
         if (jedis.setnx(sessionId.getBytes(), NULL_SESSION) == 0L) {
           sessionId = null;
