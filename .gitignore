@@ -1,2 +1,5 @@
 .gradle/*
 build/*
+example-app/build/*
+example-app/.gradle/*
+.DS_Store
