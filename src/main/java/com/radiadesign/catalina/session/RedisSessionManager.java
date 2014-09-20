@@ -454,6 +454,10 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
   }
 
   public void save(Session session) throws IOException {
+    save(session, false);
+  }
+
+  public void save(Session session, boolean forceSave) throws IOException {
     Jedis jedis = null;
     Boolean error = true;
 
@@ -478,7 +482,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
       jedis = acquireConnection();
 
       Boolean isCurrentSessionPersisted = this.currentSessionIsPersisted.get();
-      if (sessionIsDirty || (isCurrentSessionPersisted == null || !isCurrentSessionPersisted)) {
+      if (forceSave || sessionIsDirty || (isCurrentSessionPersisted == null || !isCurrentSessionPersisted)) {
         jedis.set(binaryId, serializer.serializeFrom(redisSession));
       }
 

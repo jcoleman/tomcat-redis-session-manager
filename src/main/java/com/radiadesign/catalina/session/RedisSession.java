@@ -56,6 +56,8 @@ public class RedisSession extends StandardSession {
     }
 
     Object oldValue = getAttribute(key);
+    super.setAttribute(key, value);
+
     if ( (value != null || oldValue != null)
          && ( value == null && oldValue != null
               || oldValue == null && value != null
@@ -64,7 +66,7 @@ public class RedisSession extends StandardSession {
       if (this.manager instanceof RedisSessionManager
           && ((RedisSessionManager)this.manager).getSaveOnChange()) {
         try {
-          ((RedisSessionManager)this.manager).save(this);
+          ((RedisSessionManager)this.manager).save(this, true);
         } catch (IOException ex) {
           log.error("Error saving session on setAttribute (triggered by saveOnChange=true): " + ex.getMessage());
         }
@@ -72,8 +74,6 @@ public class RedisSession extends StandardSession {
         changedAttributes.put(key, value);
       }
     }
-
-    super.setAttribute(key, value);
   }
 
   @Override
@@ -82,7 +82,7 @@ public class RedisSession extends StandardSession {
     if (this.manager instanceof RedisSessionManager
         && ((RedisSessionManager)this.manager).getSaveOnChange()) {
       try {
-        ((RedisSessionManager)this.manager).save(this);
+        ((RedisSessionManager)this.manager).save(this, true);
       } catch (IOException ex) {
         log.error("Error saving session on setAttribute (triggered by saveOnChange=true): " + ex.getMessage());
       }
