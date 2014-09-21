@@ -12,6 +12,21 @@ The manager relies on the native expiration capability of Redis to expire keys f
 
 Data stored in the session must be Serializable.
 
+
+Support this project!
+---------------------
+
+This is an open-source project. Currently I'm not using this for anything personal or professional, so I'm not able to commit much time to the project, though I attempt to merge in reasonable pull requests. If you like to support further development of this project, you can donate via Pledgie:
+
+<a href='https://pledgie.com/campaigns/26802'><img alt='Click here to lend your support to: Tomcat Redis Session Manager and make a donation at pledgie.com !' src='https://pledgie.com/campaigns/26802.png?skin_name=chrome' border='0' ></a>
+
+
+Commercial Support
+------------------
+
+If your business depends on Tomcat and persistent sessions and you need a specific feature this project doesn't yet support, a quick bug fix you don't have time to author, or commercial support when things go wrong, I can provide support on a contractual support through my consultancy, Orange Function, LLC. If you have any questions or would like to begin discussing a deal, please contact me via email at james@orangefunction.com.
+
+
 Tomcat Versions
 ---------------
 
