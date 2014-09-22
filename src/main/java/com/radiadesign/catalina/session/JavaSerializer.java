@@ -31,13 +31,13 @@ public class JavaSerializer implements Serializer {
   public HttpSession deserializeInto(byte[] data, HttpSession session) throws IOException, ClassNotFoundException {
 
     RedisSession redisSession = (RedisSession) session;
-
-    BufferedInputStream bis = new BufferedInputStream(new ByteArrayInputStream(data));
-
-    ObjectInputStream ois = new CustomObjectInputStream(bis, loader);
-    redisSession.setCreationTime(ois.readLong());
-    redisSession.readObjectData(ois);
-
-    return session;
+    try(
+        BufferedInputStream bis = new BufferedInputStream(new ByteArrayInputStream(data));
+        ObjectInputStream ois = new CustomObjectInputStream(bis, loader);
+    ) {
+        redisSession.setCreationTime(ois.readLong());
+        redisSession.readObjectData(ois);
+        return session;
+    }
   }
 }
