@@ -72,6 +72,11 @@ Copy the following files into the `TOMCAT_BASE/lib` directory:
 
 Reboot the server, and sessions should now be stored in Redis.
 
+Connection Pool Configuration
+-----------------------------
+
+All of the configuration options from both `org.apache.commons.pool2.impl.GenericObjectPoolConfig` and `org.apache.commons.pool2.impl.BaseObjectPoolConfig` are also configurable for the Redis connection pool used by the session manager. To configure any of these attributes (e.g., `maxIdle` and `testOnBorrow`) just use the config attribute name prefixed with `connectionPool` (e.g., `connectionPoolMaxIdle` and `connectionPoolTestOnBorrow`) and set the desired value in the `<Manager>` declaration in your Tomcat context.xml.
+
 Session Change Tracking
 -----------------------
 
