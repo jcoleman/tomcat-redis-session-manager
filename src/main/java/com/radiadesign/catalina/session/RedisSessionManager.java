@@ -10,7 +10,9 @@ import org.apache.catalina.Valve;
 import org.apache.catalina.Session;
 import org.apache.catalina.session.ManagerBase;
 
+import redis.clients.util.Pool;
 import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisSentinelPool;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Protocol;
@@ -20,6 +22,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Set;
+import java.util.HashSet;
 
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
@@ -36,7 +39,11 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
   protected int database = 0;
   protected String password = null;
   protected int timeout = Protocol.DEFAULT_TIMEOUT;
-  protected JedisPool connectionPool;
+  protected String sentinelMaster = null;
+  protected String sentinels = null;
+  Set<String> sentinelSet = null;
+
+  protected Pool<Jedis> connectionPool;
 
   protected RedisSessionHandlerValve handlerValve;
   protected ThreadLocal<RedisSession> currentSession = new ThreadLocal<>();
@@ -105,6 +112,33 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
   public void setSaveOnChange(boolean saveOnChange) {
     this.saveOnChange = saveOnChange;
+  }
+
+  public String getSentinels() {
+    return sentinels;
+  }
+
+  public void setSentinels(String sentinels) {
+    if (null == sentinels) {
+      sentinels = "";
+    }
+
+    String[] sentinelArray = getSentinels().split(",");
+    this.sentinelSet = new HashSet<String>(Arrays.asList(sentinelArray));
+
+    this.sentinels = sentinels;
+  }
+
+  public Set<String> getSentinelSet() {
+    return this.sentinelSet;
+  }
+
+  public String getSentinelMaster() {
+    return this.sentinelMaster;
+  }
+
+  public void setSentinelMaster(String master) {
+    this.sentinelMaster = sentinelMaster;
   }
 
   @Override
@@ -546,10 +580,19 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
   private void initializeDatabaseConnection() throws LifecycleException {
     try {
       // TODO: Allow configuration of pool (such as size...)
-      connectionPool = new JedisPool(new JedisPoolConfig(), getHost(), getPort(), getTimeout(), getPassword());
+      if (getSentinelMaster() != null) {
+        Set<String> sentinelSet = getSentinelSet();
+        if (sentinelSet != null && sentinelSet.size() > 0) {
+          connectionPool = new JedisSentinelPool(getSentinelMaster(), sentinelSet, new JedisPoolConfig(), getTimeout(), getPassword());
+        } else {
+          throw new LifecycleException("Error configuring Redis Sentinel connection pool: expected both `sentinelMaster` and `sentiels` to be configured");
+        }
+      } else {
+        connectionPool = new JedisPool(new JedisPoolConfig(), getHost(), getPort(), getTimeout(), getPassword());
+      }
     } catch (Exception e) {
       e.printStackTrace();
-      throw new LifecycleException("Error Connecting to Redis", e);
+      throw new LifecycleException("Error connecting to Redis", e);
     }
   }
 
