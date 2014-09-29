@@ -60,7 +60,6 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
   protected String password = null;
   protected int timeout = Protocol.DEFAULT_TIMEOUT;
   protected String sentinelMaster = null;
-  protected String sentinels = null;
   Set<String> sentinelSet = null;
 
   protected Pool<Jedis> connectionPool;
@@ -158,7 +157,14 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
   }
 
   public String getSentinels() {
-    return sentinels;
+    StringBuilder sentinels = new StringBuilder();
+    for (Iterator<String> iter = this.sentinelSet.iterator(); iter.hasNext();) {
+      sentinels.append(iter.next());
+      if (iter.hasNext()) {
+        sentinels.append(",");
+      }
+    }
+    return sentinels.toString();
   }
 
   public void setSentinels(String sentinels) {
@@ -168,8 +174,6 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
     String[] sentinelArray = getSentinels().split(",");
     this.sentinelSet = new HashSet<String>(Arrays.asList(sentinelArray));
-
-    this.sentinels = sentinels;
   }
 
   public Set<String> getSentinelSet() {
