@@ -37,7 +37,8 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
   enum SessionPersistPolicy {
     DEFAULT,
-    SAVE_ON_CHANGE;
+    SAVE_ON_CHANGE,
+    ALWAYS_SAVE_AFTER_REQUEST;
 
     static SessionPersistPolicy fromName(String name) {
       for (SessionPersistPolicy policy : SessionPersistPolicy.values()) {
@@ -150,6 +151,10 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
   public boolean getSaveOnChange() {
     return this.sessionPersistPoliciesSet.contains(SessionPersistPolicy.SAVE_ON_CHANGE);
+  }
+
+  public boolean getAlwaysSaveAfterRequest() {
+    return this.sessionPersistPoliciesSet.contains(SessionPersistPolicy.ALWAYS_SAVE_AFTER_REQUEST);
   }
 
   public String getSentinels() {

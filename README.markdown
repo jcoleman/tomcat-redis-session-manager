@@ -123,6 +123,7 @@ With an persistent session storage there is going to be the distinct possibility
 Since each situation is different, the manager gives you several options which control the details of when/how sessions are persisted. Each of the following options may be selected by setting the `sessionPersistPolicies="PERSIST_POLICY_1,PERSIST_POLICY_2,.."` attributes in your manager declaration in Tomcat's context.xml. Unless noted otherwise, the various options are all combinable.
 
 - `SAVE_ON_CHANGE`: every time `session.setAttribute()` or `session.removeAttribute()` is called the session will be saved. __Note:__ This feature cannot detect changes made to objects already stored in a specific session attribute. __Tradeoffs__: This option will degrade performance slightly as any change to the session will save the session synchronously to Redis.
+- `ALWAYS_SAVE_AFTER_REQUEST`: force saving after every request, regardless of whether or not the manager has detected changes to the session. This option is particularly useful if you make changes to objects already stored in a specific session attribute. __Tradeoff:__ This option make actually increase the liklihood of race conditions if not all of your requests change the session.
 
 Possible Issues
 ---------------

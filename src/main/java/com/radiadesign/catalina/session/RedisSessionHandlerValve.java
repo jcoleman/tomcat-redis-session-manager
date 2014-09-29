@@ -38,7 +38,7 @@ public class RedisSessionHandlerValve extends ValveBase {
           log.trace("Request with session completed, saving session " + session.getId());
           if (session.getSession() != null) {
             log.trace("HTTP Session present, saving " + session.getId());
-            manager.save(session);
+            manager.save(session, manager.getAlwaysSaveAfterRequest());
           } else {
             log.trace("No HTTP Session present, Not saving " + session.getId());
           }
