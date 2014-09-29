@@ -127,7 +127,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
       sentinels = "";
     }
 
-    String[] sentinelArray = getSentinels().split(",");
+    String[] sentinelArray = sentinels.split(",");
     this.sentinelSet = new HashSet<String>(Arrays.asList(sentinelArray));
 
     this.sentinels = sentinels;
