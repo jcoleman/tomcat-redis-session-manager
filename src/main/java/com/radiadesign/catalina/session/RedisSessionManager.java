@@ -10,7 +10,12 @@ import org.apache.catalina.Valve;
 import org.apache.catalina.Session;
 import org.apache.catalina.session.ManagerBase;
 
+import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
+import org.apache.commons.pool2.impl.BaseObjectPoolConfig;
+
+import redis.clients.util.Pool;
 import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisSentinelPool;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Protocol;
@@ -20,6 +25,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Set;
+import java.util.HashSet;
 
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
@@ -36,7 +42,12 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
   protected int database = 0;
   protected String password = null;
   protected int timeout = Protocol.DEFAULT_TIMEOUT;
-  protected JedisPool connectionPool;
+  protected String sentinelMaster = null;
+  protected String sentinels = null;
+  Set<String> sentinelSet = null;
+
+  protected Pool<Jedis> connectionPool;
+  protected JedisPoolConfig connectionPoolConfig = new JedisPoolConfig();
 
   protected RedisSessionHandlerValve handlerValve;
   protected ThreadLocal<RedisSession> currentSession = new ThreadLocal<>();
@@ -105,6 +116,33 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
   public void setSaveOnChange(boolean saveOnChange) {
     this.saveOnChange = saveOnChange;
+  }
+
+  public String getSentinels() {
+    return sentinels;
+  }
+
+  public void setSentinels(String sentinels) {
+    if (null == sentinels) {
+      sentinels = "";
+    }
+
+    String[] sentinelArray = getSentinels().split(",");
+    this.sentinelSet = new HashSet<String>(Arrays.asList(sentinelArray));
+
+    this.sentinels = sentinels;
+  }
+
+  public Set<String> getSentinelSet() {
+    return this.sentinelSet;
+  }
+
+  public String getSentinelMaster() {
+    return this.sentinelMaster;
+  }
+
+  public void setSentinelMaster(String master) {
+    this.sentinelMaster = sentinelMaster;
   }
 
   @Override
@@ -545,11 +583,19 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
   private void initializeDatabaseConnection() throws LifecycleException {
     try {
-      // TODO: Allow configuration of pool (such as size...)
-      connectionPool = new JedisPool(new JedisPoolConfig(), getHost(), getPort(), getTimeout(), getPassword());
+      if (getSentinelMaster() != null) {
+        Set<String> sentinelSet = getSentinelSet();
+        if (sentinelSet != null && sentinelSet.size() > 0) {
+          connectionPool = new JedisSentinelPool(getSentinelMaster(), sentinelSet, this.connectionPoolConfig, getTimeout(), getPassword());
+        } else {
+          throw new LifecycleException("Error configuring Redis Sentinel connection pool: expected both `sentinelMaster` and `sentiels` to be configured");
+        }
+      } else {
+        connectionPool = new JedisPool(this.connectionPoolConfig, getHost(), getPort(), getTimeout(), getPassword());
+      }
     } catch (Exception e) {
       e.printStackTrace();
-      throw new LifecycleException("Error Connecting to Redis", e);
+      throw new LifecycleException("Error connecting to Redis", e);
     }
   }
 
@@ -569,5 +615,153 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         classLoader = loader.getClassLoader();
     }
     serializer.setClassLoader(classLoader);
+  }
+
+
+  // Connection Pool Config Accessors
+
+  // - from org.apache.commons.pool2.impl.GenericObjectPoolConfig
+
+  public int getConnectionPoolMaxTotal() {
+    return this.connectionPoolConfig.getMaxTotal();
+  }
+
+  public void setConnectionPoolMaxTotal(int connectionPoolMaxTotal) {
+    this.connectionPoolConfig.setMaxTotal(connectionPoolMaxTotal);
+  }
+
+  public int getConnectionPoolMaxIdle() {
+    return this.connectionPoolConfig.getMaxIdle();
+  }
+
+  public void setConnectionPoolMaxIdle(int connectionPoolMaxIdle) {
+    this.connectionPoolConfig.setMaxIdle(connectionPoolMaxIdle);
+  }
+
+  public int getConnectionPoolMinIdle() {
+    return this.connectionPoolConfig.getMinIdle();
+  }
+
+  public void setConnectionPoolMinIdle(int connectionPoolMinIdle) {
+    this.connectionPoolConfig.setMinIdle(connectionPoolMinIdle);
+  }
+
+
+  // - from org.apache.commons.pool2.impl.BaseObjectPoolConfig
+
+  public boolean getLifo() {
+    return this.connectionPoolConfig.getLifo();
+  }
+  public void setLifo(boolean lifo) {
+    this.connectionPoolConfig.setLifo(lifo);
+  }
+  public long getMaxWaitMillis() {
+    return this.connectionPoolConfig.getMaxWaitMillis();
+  }
+
+  public void setMaxWaitMillis(long maxWaitMillis) {
+    this.connectionPoolConfig.setMaxWaitMillis(maxWaitMillis);
+  }
+
+  public long getMinEvictableIdleTimeMillis() {
+    return this.connectionPoolConfig.getMinEvictableIdleTimeMillis();
+  }
+
+  public void setMinEvictableIdleTimeMillis(long minEvictableIdleTimeMillis) {
+    this.connectionPoolConfig.setMinEvictableIdleTimeMillis(minEvictableIdleTimeMillis);
+  }
+
+  public long getSoftMinEvictableIdleTimeMillis() {
+    return this.connectionPoolConfig.getSoftMinEvictableIdleTimeMillis();
+  }
+
+  public void setSoftMinEvictableIdleTimeMillis(long softMinEvictableIdleTimeMillis) {
+    this.connectionPoolConfig.setSoftMinEvictableIdleTimeMillis(softMinEvictableIdleTimeMillis);
+  }
+
+  public int getNumTestsPerEvictionRun() {
+    return this.connectionPoolConfig.getNumTestsPerEvictionRun();
+  }
+
+  public void setNumTestsPerEvictionRun(int numTestsPerEvictionRun) {
+    this.connectionPoolConfig.setNumTestsPerEvictionRun(numTestsPerEvictionRun);
+  }
+
+  public boolean getTestOnCreate() {
+    return this.connectionPoolConfig.getTestOnCreate();
+  }
+
+  public void setTestOnCreate(boolean testOnCreate) {
+    this.connectionPoolConfig.setTestOnCreate(testOnCreate);
+  }
+
+  public boolean getTestOnBorrow() {
+    return this.connectionPoolConfig.getTestOnBorrow();
+  }
+
+  public void setTestOnBorrow(boolean testOnBorrow) {
+    this.connectionPoolConfig.setTestOnBorrow(testOnBorrow);
+  }
+
+  public boolean getTestOnReturn() {
+    return this.connectionPoolConfig.getTestOnReturn();
+  }
+
+  public void setTestOnReturn(boolean testOnReturn) {
+    this.connectionPoolConfig.setTestOnReturn(testOnReturn);
+  }
+
+  public boolean getTestWhileIdle() {
+    return this.connectionPoolConfig.getTestWhileIdle();
+  }
+
+  public void setTestWhileIdle(boolean testWhileIdle) {
+    this.connectionPoolConfig.setTestWhileIdle(testWhileIdle);
+  }
+
+  public long getTimeBetweenEvictionRunsMillis() {
+    return this.connectionPoolConfig.getTimeBetweenEvictionRunsMillis();
+  }
+
+  public void setTimeBetweenEvictionRunsMillis(long timeBetweenEvictionRunsMillis) {
+    this.connectionPoolConfig.setTimeBetweenEvictionRunsMillis(timeBetweenEvictionRunsMillis);
+  }
+
+  public String getEvictionPolicyClassName() {
+    return this.connectionPoolConfig.getEvictionPolicyClassName();
+  }
+
+  public void setEvictionPolicyClassName(String evictionPolicyClassName) {
+    this.connectionPoolConfig.setEvictionPolicyClassName(evictionPolicyClassName);
+  }
+
+  public boolean getBlockWhenExhausted() {
+    return this.connectionPoolConfig.getBlockWhenExhausted();
+  }
+
+  public void setBlockWhenExhausted(boolean blockWhenExhausted) {
+    this.connectionPoolConfig.setBlockWhenExhausted(blockWhenExhausted);
+  }
+
+  public boolean getJmxEnabled() {
+    return this.connectionPoolConfig.getJmxEnabled();
+  }
+
+  public void setJmxEnabled(boolean jmxEnabled) {
+    this.connectionPoolConfig.setJmxEnabled(jmxEnabled);
+  }
+  public String getJmxNameBase() {
+    return this.connectionPoolConfig.getJmxNameBase();
+  }
+  public void setJmxNameBase(String jmxNameBase) {
+    this.connectionPoolConfig.setJmxNameBase(jmxNameBase);
+  }
+
+  public String getJmxNamePrefix() {
+    return this.connectionPoolConfig.getJmxNamePrefix();
+  }
+
+  public void setJmxNamePrefix(String jmxNamePrefix) {
+    this.connectionPoolConfig.setJmxNamePrefix(jmxNamePrefix);
   }
 }

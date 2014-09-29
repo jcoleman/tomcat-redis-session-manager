@@ -58,7 +58,9 @@ Add the following into your Tomcat context.xml (or the context block of the serv
              host="localhost" <!-- optional: defaults to "localhost" -->
              port="6379" <!-- optional: defaults to "6379" -->
              database="0" <!-- optional: defaults to "0" -->
-             maxInactiveInterval="60" <!-- optional: defaults to "60" (in seconds) --> />
+             maxInactiveInterval="60" <!-- optional: defaults to "60" (in seconds) -->
+             sentinelMaster="SentinelMasterName" <!-- optional -->
+             sentinels="sentinel-host-1:port,sentinel-host-2:port,.." <!-- optional --> />
 
 The Valve must be declared before the Manager.
 
@@ -69,6 +71,11 @@ Copy the following files into the `TOMCAT_BASE/lib` directory:
 * commons-pool2-2.2.jar
 
 Reboot the server, and sessions should now be stored in Redis.
+
+Connection Pool Configuration
+-----------------------------
+
+All of the configuration options from both `org.apache.commons.pool2.impl.GenericObjectPoolConfig` and `org.apache.commons.pool2.impl.BaseObjectPoolConfig` are also configurable for the Redis connection pool used by the session manager. To configure any of these attributes (e.g., `maxIdle` and `testOnBorrow`) just use the config attribute name prefixed with `connectionPool` (e.g., `connectionPoolMaxIdle` and `connectionPoolTestOnBorrow`) and set the desired value in the `<Manager>` declaration in your Tomcat context.xml.
 
 Session Change Tracking
 -----------------------
