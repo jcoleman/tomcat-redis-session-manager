@@ -125,20 +125,6 @@ Since each situation is different, the manager gives you several options which c
 - `SAVE_ON_CHANGE`: every time `session.setAttribute()` or `session.removeAttribute()` is called the session will be saved. __Note:__ This feature cannot detect changes made to objects already stored in a specific session attribute. __Tradeoffs__: This option will degrade performance slightly as any change to the session will save the session synchronously to Redis.
 - `ALWAYS_SAVE_AFTER_REQUEST`: force saving after every request, regardless of whether or not the manager has detected changes to the session. This option is particularly useful if you make changes to objects already stored in a specific session attribute. __Tradeoff:__ This option make actually increase the liklihood of race conditions if not all of your requests change the session.
 
-Possible Issues
----------------
-
-There is the possibility of a race condition that would cause seeming invisibility of the session immediately after your web application logs in a user: if the response has finished streaming and the client requests a new page before the valve has been able to complete saving the session into Redis, then the new request will not see the session.
-
-This condition will be detected by the session manager and a java.lang.IllegalStateException with the message `Race condition encountered: attempted to load session[SESSION_ID] which has been created but not yet serialized.` will be thrown.
-
-Normally this should be incredibly unlikely (insert joke about programmers and "this should never happen" statements here) since the connection to save the session into Redis is almost guaranteed to be faster than the latency between a client receiving the response, processing it, and starting a new request.
-
-Possible solutions:
-
-- Enable the "save on change" feature (see the Persistence Policies documentation). Technically this will still exhibit slight race condition behavior, but it eliminates as much possiblity of errors occurring as possible. __Note__: There's a tradeoff here in that if you make several changes to the session attributes over the lifetime of a long-running request while other short requests are making changes, you'll still end up having the long-running request overwrite the changes made by the short requests. Unfortunately there's no way to completely eliminate all possible race conditions here, so you'll have to determine what's necessary for your specific use case.
-- If you encounter errors, then you can force save the session early (before sending a response to the client) then you can retrieve the current session, and call `currentSession.manager.save(currentSession, true)` to synchronously eliminate the race condition. Note: this will only work directly if your application has the actual session object directly exposed. Many frameworks (and often even Tomcat) will expose the session in their own wrapper HttpSession implementing class. You may be able to dig through these layers to expose the actual underlying RedisSession instance--if so, then using that instance will allow you to implement the workaround.
-
 Acknowledgements
 ----------------
 

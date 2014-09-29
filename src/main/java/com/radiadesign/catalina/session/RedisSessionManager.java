@@ -377,11 +377,14 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
       currentSessionId.set(sessionId);
       currentSessionIsPersisted.set(false);
 
-      if (null != session && this.getSaveOnChange()) {
+      if (null != session) {
         try {
-          save(session);
+          error = saveInternal(jedis, session, true);
         } catch (IOException ex) {
-          log.error("Error saving newly created session (triggered by saveOnChange=true): " + ex.getMessage());
+          log.error("Error saving newly created session: " + ex.getMessage());
+          currentSession.set(null);
+          currentSessionId.set(null);
+          session = null;
         }
       }
     } finally {
@@ -494,8 +497,6 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
       if (data == null) {
         log.trace("Session " + id + " not found in Redis");
         session = null;
-      } else if (Arrays.equals(NULL_SESSION, data)) {
-        throw new IllegalStateException("Race condition encountered: attempted to load session[" + id + "] which has been created but not yet serialized.");
       } else {
         log.trace("Deserializing session " + id + " from Redis");
         session = (RedisSession)createEmptySession();
@@ -539,9 +540,24 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     Boolean error = true;
 
     try {
+      jedis = acquireConnection();
+      error = saveInternal(jedis, session, forceSave);
+    } catch (IOException e) {
+      throw e;
+    } finally {
+      if (jedis != null) {
+        returnConnection(jedis, error);
+      }
+    }
+  }
+
+  protected boolean saveInternal(Jedis jedis, Session session, boolean forceSave) throws IOException {
+    Boolean error = true;
+
+    try {
       log.trace("Saving session " + session + " into Redis");
 
-      RedisSession redisSession = (RedisSession) session;
+      RedisSession redisSession = (RedisSession)session;
 
       if (log.isTraceEnabled()) {
         log.trace("Session Contents [" + redisSession.getId() + "]:");
@@ -556,8 +572,6 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
       redisSession.resetDirtyTracking();
       byte[] binaryId = redisSession.getId().getBytes();
 
-      jedis = acquireConnection();
-
       Boolean isCurrentSessionPersisted = this.currentSessionIsPersisted.get();
       if (forceSave || sessionIsDirty || (isCurrentSessionPersisted == null || !isCurrentSessionPersisted)) {
         jedis.set(binaryId, serializer.serializeFrom(redisSession));
@@ -569,14 +583,14 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
       jedis.expire(binaryId, getMaxInactiveInterval());
 
       error = false;
+
+      return error;
     } catch (IOException e) {
       log.error(e.getMessage());
 
       throw e;
     } finally {
-      if (jedis != null) {
-        returnConnection(jedis, error);
-      }
+      return error;
     }
   }
 
