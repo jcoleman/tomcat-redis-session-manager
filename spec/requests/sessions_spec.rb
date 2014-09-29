@@ -102,13 +102,15 @@ describe "Tomcat Redis Sessions", type: :controller do
     describe "change on save" do
 
       before :each do
-        get("#{SETTINGS_PATH}/saveOnChange")
-        @oldSaveOnChangeValue = json['value']
-        post("#{SETTINGS_PATH}/saveOnChange", body: {value: 'true'})
+        get("#{SETTINGS_PATH}/sessionPersistPolicies")
+        @oldSessionPersistPoliciesValue = json['value']
+        enums = @oldSessionPersistPoliciesValue.split(',')
+        enums << 'SAVE_ON_CHANGE'
+        post("#{SETTINGS_PATH}/sessionPersistPolicies", body: {value: enums.join(',')})
       end
 
       after :each do
-        post("#{SETTINGS_PATH}/saveOnChange", body: {value: @oldSaveOnChangeValue})
+        post("#{SETTINGS_PATH}/sessionPersistPolicies", body: {value: @oldSessionPersistPoliciesValue})
       end
 
       it 'should support persisting the session on change to minimize race conditions on simultaneous updates' do

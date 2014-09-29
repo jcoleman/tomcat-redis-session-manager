@@ -25,13 +25,29 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Set;
+import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.Iterator;
 
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
 
 
 public class RedisSessionManager extends ManagerBase implements Lifecycle {
+
+  enum SessionPersistPolicy {
+    DEFAULT,
+    SAVE_ON_CHANGE;
+
+    static SessionPersistPolicy fromName(String name) {
+      for (SessionPersistPolicy policy : SessionPersistPolicy.values()) {
+        if (policy.name().equalsIgnoreCase(name)) {
+          return policy;
+        }
+      }
+      throw new IllegalArgumentException("Invalid session persist policy [" + name + "]. Must be one of " + Arrays.asList(SessionPersistPolicy.values())+ ".");
+    }
+  }
 
   protected byte[] NULL_SESSION = "null".getBytes();
 
@@ -59,7 +75,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
   protected String serializationStrategyClass = "com.radiadesign.catalina.session.JavaSerializer";
 
-  protected boolean saveOnChange = false;
+  protected EnumSet<SessionPersistPolicy> sessionPersistPoliciesSet = EnumSet.of(SessionPersistPolicy.DEFAULT);
 
   /**
    * The lifecycle event support for this component.
@@ -110,12 +126,30 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     this.serializationStrategyClass = strategy;
   }
 
-  public boolean getSaveOnChange() {
-    return saveOnChange;
+  public String getSessionPersistPolicies() {
+    StringBuilder policies = new StringBuilder();
+    for (Iterator<SessionPersistPolicy> iter = this.sessionPersistPoliciesSet.iterator(); iter.hasNext();) {
+      SessionPersistPolicy policy = iter.next();
+      policies.append(policy.name());
+      if (iter.hasNext()) {
+        policies.append(",");
+      }
+    }
+    return policies.toString();
   }
 
-  public void setSaveOnChange(boolean saveOnChange) {
-    this.saveOnChange = saveOnChange;
+  public void setSessionPersistPolicies(String sessionPersistPolicies) {
+    String[] policyArray = sessionPersistPolicies.split(",");
+    EnumSet<SessionPersistPolicy> policySet = EnumSet.of(SessionPersistPolicy.DEFAULT);
+    for (String policyName : policyArray) {
+      SessionPersistPolicy policy = SessionPersistPolicy.fromName(policyName);
+      policySet.add(policy);
+    }
+    this.sessionPersistPoliciesSet = policySet;
+  }
+
+  public boolean getSaveOnChange() {
+    return this.sessionPersistPoliciesSet.contains(SessionPersistPolicy.SAVE_ON_CHANGE);
   }
 
   public String getSentinels() {

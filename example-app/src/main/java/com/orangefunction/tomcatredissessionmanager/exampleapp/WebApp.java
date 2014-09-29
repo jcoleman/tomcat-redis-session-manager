@@ -225,8 +225,8 @@ public class WebApp implements spark.servlet.SparkApplication {
 
            RedisSessionManager manager = getRedisSessionManager(request);
            if (null != manager) {
-             if (key.equals("saveOnChange")) {
-               map.put("value", new Boolean(manager.getSaveOnChange()));
+             if (key.equals("sessionPersistPolicies")) {
+               map.put("value", manager.getSessionPersistPolicies());
              } else if (key.equals("maxInactiveInterval")) {
                map.put("value", new Integer(manager.getMaxInactiveInterval()));
              }
@@ -248,9 +248,9 @@ public class WebApp implements spark.servlet.SparkApplication {
 
            RedisSessionManager manager = getRedisSessionManager(request);
            if (null != manager) {
-             if (key.equals("saveOnChange")) {
-               manager.setSaveOnChange(Boolean.parseBoolean(value));
-               map.put("value", new Boolean(manager.getSaveOnChange()));
+             if (key.equals("sessionPersistPolicies")) {
+               manager.setSessionPersistPolicies(value);
+               map.put("value", manager.getSessionPersistPolicies());
              } else if (key.equals("maxInactiveInterval")) {
                manager.setMaxInactiveInterval(Integer.parseInt(value));
                map.put("value", new Integer(manager.getMaxInactiveInterval()));
