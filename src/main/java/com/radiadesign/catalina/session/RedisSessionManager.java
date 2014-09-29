@@ -25,13 +25,30 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Set;
+import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.Iterator;
 
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
 
 
 public class RedisSessionManager extends ManagerBase implements Lifecycle {
+
+  enum SessionPersistPolicy {
+    DEFAULT,
+    SAVE_ON_CHANGE,
+    ALWAYS_SAVE_AFTER_REQUEST;
+
+    static SessionPersistPolicy fromName(String name) {
+      for (SessionPersistPolicy policy : SessionPersistPolicy.values()) {
+        if (policy.name().equalsIgnoreCase(name)) {
+          return policy;
+        }
+      }
+      throw new IllegalArgumentException("Invalid session persist policy [" + name + "]. Must be one of " + Arrays.asList(SessionPersistPolicy.values())+ ".");
+    }
+  }
 
   protected byte[] NULL_SESSION = "null".getBytes();
 
@@ -43,7 +60,6 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
   protected String password = null;
   protected int timeout = Protocol.DEFAULT_TIMEOUT;
   protected String sentinelMaster = null;
-  protected String sentinels = null;
   Set<String> sentinelSet = null;
 
   protected Pool<Jedis> connectionPool;
@@ -59,7 +75,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
   protected String serializationStrategyClass = "com.radiadesign.catalina.session.JavaSerializer";
 
-  protected boolean saveOnChange = false;
+  protected EnumSet<SessionPersistPolicy> sessionPersistPoliciesSet = EnumSet.of(SessionPersistPolicy.DEFAULT);
 
   /**
    * The lifecycle event support for this component.
@@ -110,16 +126,45 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     this.serializationStrategyClass = strategy;
   }
 
-  public boolean getSaveOnChange() {
-    return saveOnChange;
+  public String getSessionPersistPolicies() {
+    StringBuilder policies = new StringBuilder();
+    for (Iterator<SessionPersistPolicy> iter = this.sessionPersistPoliciesSet.iterator(); iter.hasNext();) {
+      SessionPersistPolicy policy = iter.next();
+      policies.append(policy.name());
+      if (iter.hasNext()) {
+        policies.append(",");
+      }
+    }
+    return policies.toString();
   }
 
-  public void setSaveOnChange(boolean saveOnChange) {
-    this.saveOnChange = saveOnChange;
+  public void setSessionPersistPolicies(String sessionPersistPolicies) {
+    String[] policyArray = sessionPersistPolicies.split(",");
+    EnumSet<SessionPersistPolicy> policySet = EnumSet.of(SessionPersistPolicy.DEFAULT);
+    for (String policyName : policyArray) {
+      SessionPersistPolicy policy = SessionPersistPolicy.fromName(policyName);
+      policySet.add(policy);
+    }
+    this.sessionPersistPoliciesSet = policySet;
+  }
+
+  public boolean getSaveOnChange() {
+    return this.sessionPersistPoliciesSet.contains(SessionPersistPolicy.SAVE_ON_CHANGE);
+  }
+
+  public boolean getAlwaysSaveAfterRequest() {
+    return this.sessionPersistPoliciesSet.contains(SessionPersistPolicy.ALWAYS_SAVE_AFTER_REQUEST);
   }
 
   public String getSentinels() {
-    return sentinels;
+    StringBuilder sentinels = new StringBuilder();
+    for (Iterator<String> iter = this.sentinelSet.iterator(); iter.hasNext();) {
+      sentinels.append(iter.next());
+      if (iter.hasNext()) {
+        sentinels.append(",");
+      }
+    }
+    return sentinels.toString();
   }
 
   public void setSentinels(String sentinels) {
@@ -129,8 +174,6 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
     String[] sentinelArray = sentinels.split(",");
     this.sentinelSet = new HashSet<String>(Arrays.asList(sentinelArray));
-
-    this.sentinels = sentinels;
   }
 
   public Set<String> getSentinelSet() {
@@ -338,11 +381,14 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
       currentSessionId.set(sessionId);
       currentSessionIsPersisted.set(false);
 
-      if (null != session && this.getSaveOnChange()) {
+      if (null != session) {
         try {
-          save(session);
+          error = saveInternal(jedis, session, true);
         } catch (IOException ex) {
-          log.error("Error saving newly created session (triggered by saveOnChange=true): " + ex.getMessage());
+          log.error("Error saving newly created session: " + ex.getMessage());
+          currentSession.set(null);
+          currentSessionId.set(null);
+          session = null;
         }
       }
     } finally {
@@ -455,8 +501,6 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
       if (data == null) {
         log.trace("Session " + id + " not found in Redis");
         session = null;
-      } else if (Arrays.equals(NULL_SESSION, data)) {
-        throw new IllegalStateException("Race condition encountered: attempted to load session[" + id + "] which has been created but not yet serialized.");
       } else {
         log.trace("Deserializing session " + id + " from Redis");
         session = (RedisSession)createEmptySession();
@@ -500,9 +544,24 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     Boolean error = true;
 
     try {
+      jedis = acquireConnection();
+      error = saveInternal(jedis, session, forceSave);
+    } catch (IOException e) {
+      throw e;
+    } finally {
+      if (jedis != null) {
+        returnConnection(jedis, error);
+      }
+    }
+  }
+
+  protected boolean saveInternal(Jedis jedis, Session session, boolean forceSave) throws IOException {
+    Boolean error = true;
+
+    try {
       log.trace("Saving session " + session + " into Redis");
 
-      RedisSession redisSession = (RedisSession) session;
+      RedisSession redisSession = (RedisSession)session;
 
       if (log.isTraceEnabled()) {
         log.trace("Session Contents [" + redisSession.getId() + "]:");
@@ -517,8 +576,6 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
       redisSession.resetDirtyTracking();
       byte[] binaryId = redisSession.getId().getBytes();
 
-      jedis = acquireConnection();
-
       Boolean isCurrentSessionPersisted = this.currentSessionIsPersisted.get();
       if (forceSave || sessionIsDirty || (isCurrentSessionPersisted == null || !isCurrentSessionPersisted)) {
         jedis.set(binaryId, serializer.serializeFrom(redisSession));
@@ -530,14 +587,14 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
       jedis.expire(binaryId, getMaxInactiveInterval());
 
       error = false;
+
+      return error;
     } catch (IOException e) {
       log.error(e.getMessage());
 
       throw e;
     } finally {
-      if (jedis != null) {
-        returnConnection(jedis, error);
-      }
+      return error;
     }
   }
 
