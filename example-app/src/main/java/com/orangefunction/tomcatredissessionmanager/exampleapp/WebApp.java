@@ -9,7 +9,7 @@ import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.Protocol;
-import com.radiadesign.catalina.session.*;
+import com.orangefunction.tomcat.redissessions.*;
 import org.apache.catalina.session.StandardSession;
 import org.apache.catalina.session.StandardSessionFacade;
 import org.apache.catalina.core.ApplicationContextFacade;

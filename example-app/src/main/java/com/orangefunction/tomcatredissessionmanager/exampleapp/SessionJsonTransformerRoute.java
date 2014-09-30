@@ -1,7 +1,7 @@
 package com.orangefunction.tomcatredissessionmanager.exampleapp;
 
 import com.google.gson.Gson;
-import com.radiadesign.catalina.session.RedisSession;
+import com.orangefunction.tomcat.redissessions.RedisSession;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Collections;
