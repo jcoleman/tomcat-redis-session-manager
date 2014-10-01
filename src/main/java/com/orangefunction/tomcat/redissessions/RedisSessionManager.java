@@ -624,10 +624,22 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
   public void afterRequest() {
     RedisSession redisSession = currentSession.get();
     if (redisSession != null) {
-      currentSession.remove();
-      currentSessionId.remove();
-      currentSessionIsPersisted.remove();
-      log.trace("Session removed from ThreadLocal :" + redisSession.getIdInternal());
+      try {
+        if (redisSession.isValid()) {
+          log.trace("Request with session completed, saving session " + redisSession.getId());
+          save(redisSession, getAlwaysSaveAfterRequest());
+        } else {
+          log.trace("HTTP Session has been invalidated, removing :" + redisSession.getId());
+          remove(redisSession);
+        }
+      } catch (Exception e) {
+        log.error("Error storing/removing session", e);
+      } finally {
+        currentSession.remove();
+        currentSessionId.remove();
+        currentSessionIsPersisted.remove();
+        log.trace("Session removed from ThreadLocal :" + redisSession.getIdInternal());
+      }
     }
   }
 

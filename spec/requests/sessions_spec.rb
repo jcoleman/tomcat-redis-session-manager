@@ -130,6 +130,10 @@ describe "Tomcat Redis Sessions", type: :controller do
           post("#{SESSION_ATTRIBUTES_PATH}/param2", body: {value: '5', sleep: 2000})
         end
 
+        sleep 0.5
+        get("#{SESSION_ATTRIBUTES_PATH}/param2")
+        json['value'].should == '5'
+
         post("#{SESSION_ATTRIBUTES_PATH}/param2", body: {value: '6'})
         get("#{SESSION_ATTRIBUTES_PATH}/param2")
         json['value'].should == '6'
