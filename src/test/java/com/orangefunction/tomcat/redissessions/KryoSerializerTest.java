@@ -1,8 +1,5 @@
-package blackboard.catalina.session;
+package com.orangefunction.tomcat.redissessions;
 
-import blackboard.catalina.session.KryoSerializer;
-import blackboard.catalina.session.RedisSession;
-import blackboard.catalina.session.RedisSessionFactory;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.Registration;
 import com.esotericsoftware.kryo.io.Input;

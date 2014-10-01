@@ -1,4 +1,4 @@
-package blackboard.catalina.session;
+package com.orangefunction.tomcat.redissessions;
 
 import org.apache.catalina.Lifecycle;
 import org.apache.catalina.LifecycleException;
@@ -244,7 +244,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
           return;
         }
 
-        log.trace( "Deserializing session " + id + " from Redis" );
+        log.trace( "Deserializing redissessions " + id + " from Redis" );
         RedisSession session = (RedisSession) serializer.readSession( data, RedisSessionManager.this );
 
         session.setId( id );
@@ -267,7 +267,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
 
   void saveSession( Session session )
   {
-    log.trace( "Saving session " + session + " into Redis" );
+    log.trace( "Saving redissessions " + session + " into Redis" );
 
     final RedisSession redisSession = (RedisSession) session;
     if ( redisSession.isDirty() )
@@ -291,7 +291,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle, Redis
   {
     super.remove( session, update );
 
-    log.trace( "Removing session ID : " + session.getId() );
+    log.trace( "Removing redissessions ID : " + session.getId() );
 
     execute( new SessionOperation()
     {

@@ -1,11 +1,9 @@
-package blackboard.catalina.session;
+package com.orangefunction.tomcat.redissessions;
 
 import java.security.Principal;
 
 import org.apache.catalina.Manager;
 import org.apache.catalina.session.StandardSession;
-
-import java.util.HashMap;
 
 
 public class RedisSession extends StandardSession

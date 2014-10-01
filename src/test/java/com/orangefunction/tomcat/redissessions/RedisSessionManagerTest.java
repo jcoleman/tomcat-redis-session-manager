@@ -1,4 +1,4 @@
-package blackboard.catalina.session;
+package com.orangefunction.tomcat.redissessions;
 
 import org.apache.catalina.*;
 import org.apache.catalina.connector.Request;

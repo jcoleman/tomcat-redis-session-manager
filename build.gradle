@@ -24,7 +24,7 @@ dependencies {
 
 uploadArchives {
     repositories.mavenDeployer {
-        repository(url: "http://maven.pd.local/content/repositories/releases") {
+        repository(url: "https://maven.blackboard.com/content/repositories/releases") {
             authentication(userName: project.NEXUS_USERNAME, password: project.NEXUS_PASSWORD)
         }
     }
