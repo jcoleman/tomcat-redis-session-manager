@@ -20,7 +20,6 @@ public class JavaSerializer implements Serializer {
     RedisSession redisSession = (RedisSession) session;
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     try (ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(bos))) {
-      oos.writeLong(redisSession.getCreationTime());
       redisSession.writeObjectData(oos);
     }
 
@@ -35,7 +34,6 @@ public class JavaSerializer implements Serializer {
         BufferedInputStream bis = new BufferedInputStream(new ByteArrayInputStream(data));
         ObjectInputStream ois = new CustomObjectInputStream(bis, loader);
     ) {
-        redisSession.setCreationTime(ois.readLong());
         redisSession.readObjectData(ois);
         return session;
     }
