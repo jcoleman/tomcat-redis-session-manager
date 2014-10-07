@@ -48,6 +48,12 @@ describe "Tomcat Redis Sessions", type: :controller do
       json['attributes']['param1'].should == '6'
     end
 
+    it 'should support setting a complex values in the session' do
+      post(SESSION_PATH, body: {param1: {subparam: '5'}})
+      json['attributes']['param1'].should have_key('subparam')
+      json['attributes']['param1']['subparam'].should == '5'
+    end
+
     it 'should persist session attributes between requests' do
       post(SESSION_PATH, body: {param1: '5'})
       get(SESSION_PATH)

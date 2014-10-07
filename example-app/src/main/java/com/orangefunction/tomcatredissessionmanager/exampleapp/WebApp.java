@@ -1,6 +1,7 @@
 package com.orangefunction.tomcatredissessionmanager.exampleapp;
 
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.HashMap;
 import java.util.Set;
 import static spark.Spark.*;
@@ -18,7 +19,12 @@ import org.apache.catalina.core.StandardContext;
 import java.lang.reflect.Field;
 import javax.servlet.*;
 
+import org.apache.juli.logging.Log;
+import org.apache.juli.logging.LogFactory;
+
 public class WebApp implements spark.servlet.SparkApplication {
+
+  private final Log log = LogFactory.getLog(WebApp.class);
 
   protected String redisHost = "localhost";
   protected int redisPort = 6379;
@@ -29,7 +35,6 @@ public class WebApp implements spark.servlet.SparkApplication {
 
   private void initializeJedisConnectionPool() {
     try {
-      // TODO: Allow configuration of pool (such as size...)
       redisConnectionPool = new JedisPool(new JedisPoolConfig(), redisHost, redisPort, redisTimeout, redisPassword);
     } catch (Exception e) {
       e.printStackTrace();
@@ -76,6 +81,50 @@ public class WebApp implements spark.servlet.SparkApplication {
     return sessionManager;
   }
 
+  protected void updateSessionFromQueryParamsMap(Session session, QueryParamsMap queryParamsMap) {
+    for (Entry<String, String[]> kv : queryParamsMap.toMap().entrySet()) {
+      String key = kv.getKey();
+      QueryParamsMap subParamsMap = queryParamsMap.get(kv.getKey());
+      if (subParamsMap.hasKeys()) {
+        Object currentValue = session.attribute(key);
+        Map<String, Object> subMap;
+        if (currentValue instanceof Map) {
+          subMap = (Map<String, Object>)currentValue;
+        } else {
+          subMap = new HashMap<String, Object>();
+          session.attribute(key, subMap);
+        }
+        updateMapFromQueryParamsMap(subMap, subParamsMap);
+      } else if (subParamsMap.hasValue()) {
+        Object value = subParamsMap.value();
+        //log.info("found key " + key + " and value " + (null == value ? "`null`" : value.toString()));
+        session.attribute(key, value);
+      }
+    }
+  }
+
+  protected void updateMapFromQueryParamsMap(Map map, QueryParamsMap queryParamsMap) {
+    for (Entry<String, String[]> kv : queryParamsMap.toMap().entrySet()) {
+      String key = kv.getKey();
+      QueryParamsMap subParamsMap = queryParamsMap.get(kv.getKey());
+      if (subParamsMap.hasKeys()) {
+        Object currentValue = map.get(key);
+        Map<String, Object> subMap;
+        if (currentValue instanceof Map) {
+          subMap = (Map<String, Object>)currentValue;
+        } else {
+          subMap = new HashMap<String, Object>();
+          map.put(key, subMap);
+        }
+        updateMapFromQueryParamsMap(subMap, subParamsMap);
+      } else if (subParamsMap.hasValue()) {
+        Object value = subParamsMap.value();
+        //log.info("found key " + key + " and value " + (null == value ? "`null`" : value.toString()));
+        map.put(key, value);
+      }
+    }
+  }
+
   public void init() {
 
       // /session
@@ -87,13 +136,14 @@ public class WebApp implements spark.servlet.SparkApplication {
          }
       });
 
+
+
       put(new SessionJsonTransformerRoute("/session", "application/json") {
          @Override
          public Object handle(Request request, Response response) {
            Session session = request.session();
-           for (String key : request.queryParams()) {
-             session.attribute(key, request.queryParams(key));
-           }
+           QueryParamsMap queryMap = request.queryMap();
+           updateSessionFromQueryParamsMap(session, queryMap);
            return session;
          }
       });
@@ -102,9 +152,8 @@ public class WebApp implements spark.servlet.SparkApplication {
          @Override
          public Object handle(Request request, Response response) {
            Session session = request.session();
-           for (String key : request.queryParams()) {
-             session.attribute(key, request.queryParams(key));
-           }
+           QueryParamsMap queryMap = request.queryMap();
+           updateSessionFromQueryParamsMap(session, queryMap);
            return session;
          }
       });
