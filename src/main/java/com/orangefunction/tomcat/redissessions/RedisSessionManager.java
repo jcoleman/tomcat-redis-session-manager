@@ -674,14 +674,14 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
     Loader loader = null;
 
-    if (container != null) {
-      loader = container.getLoader();
+    if (getContainer() != null) {
+      loader = getContainer().getLoader();
     }
 
     ClassLoader classLoader = null;
 
     if (loader != null) {
-        classLoader = loader.getClassLoader();
+      classLoader = loader.getClassLoader();
     }
     serializer.setClassLoader(classLoader);
   }
