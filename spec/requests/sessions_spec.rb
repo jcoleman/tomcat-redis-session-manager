@@ -77,6 +77,37 @@ describe "Tomcat Redis Sessions", type: :controller do
       json['keys'].should_not include('param1')
     end
 
+    it 'should only update if the session changes' do
+      post(SESSION_PATH, body: {param1: '5'})
+
+      # This is not a perfect guarantee, but in general we're assuming
+      # that the requests will happen in the following order:
+      # - Post(value=5) starts
+      # - Post(value=6) starts
+      # - Post(value=6) finishes
+      # - Get() returns 6
+      # - Post(value=5) finishes
+      #     Note: this would represent a change from the current persisted value
+      #           but it does not represent a change from when this request's
+      #           copy of the session was loaded, so it shouldn't be persisted.
+      # - Get() returns 6
+      last_request_to_finish = Thread.new do
+        post("#{SESSION_ATTRIBUTES_PATH}/param1", body: {value: '5', sleep: 2000})
+      end
+      sleep 1
+      post("#{SESSION_ATTRIBUTES_PATH}/param1", body: {value: '6'})
+      # Verify our assumption that this request loaded it's session
+      # before the request Post(value=7) finished.
+      json['oldValue'].should == '5'
+      get("#{SESSION_ATTRIBUTES_PATH}/param1")
+      json['value'].should == '6'
+
+      last_request_to_finish.join
+
+      get("#{SESSION_ATTRIBUTES_PATH}/param1")
+      json['value'].should == '6'
+    end
+
     it 'should default to last-write-wins behavior for simultaneous updates' do
       post(SESSION_PATH, body: {param1: '5'})
 
