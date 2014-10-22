@@ -30,9 +30,15 @@ public class JavaSerializer implements Serializer {
       attributes.put(key, session.getAttribute(key));
     }
 
-    ByteArrayOutputStream bos = new ByteArrayOutputStream();
-    try (ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(bos))) {
+    byte[] serialized = null;
+
+    try (
+         ByteArrayOutputStream bos = new ByteArrayOutputStream();
+         ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(bos));
+    ) {
       oos.writeUnshared(attributes);
+
+      serialized = bos.toByteArray();
     }
 
     MessageDigest digester = null;
@@ -41,18 +47,24 @@ public class JavaSerializer implements Serializer {
     } catch (NoSuchAlgorithmException e) {
       log.error("Unable to get MessageDigest instance for MD5");
     }
-    return digester.digest(bos.toByteArray());
+    return digester.digest(serialized);
   }
 
   @Override
   public byte[] serializeFrom(RedisSession session, SessionSerializationMetadata metadata) throws IOException {
-    ByteArrayOutputStream bos = new ByteArrayOutputStream();
-    try (ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(bos))) {
+    byte[] serialized = null;
+
+    try (
+         ByteArrayOutputStream bos = new ByteArrayOutputStream();
+         ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(bos));
+    ) {
       oos.writeObject(metadata);
       session.writeObjectData(oos);
+
+      serialized = bos.toByteArray();
     }
 
-    return bos.toByteArray();
+    return serialized;
   }
 
   @Override
