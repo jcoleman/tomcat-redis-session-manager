@@ -76,6 +76,14 @@ describe 'session updating' do
     json['value'].should == '6'
   end
 
+  it 'should detect nested changes and persist them' do
+    post(SESSION_PATH, body: {param1: {subparam: '5'}})
+    json['attributes']['param1']['subparam'].should == '5'
+    post(SESSION_PATH, body: {param1: {subparam: '6'}})
+    get(SESSION_PATH)
+    json['attributes']['param1']['subparam'].should == '6'
+  end
+
   it 'should default to last-write-wins behavior for simultaneous updates' do
     post(SESSION_PATH, body: {param1: '5'})
 

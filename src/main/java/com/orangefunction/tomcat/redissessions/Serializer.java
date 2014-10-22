@@ -6,7 +6,7 @@ import java.io.IOException;
 public interface Serializer {
   void setClassLoader(ClassLoader loader);
 
-  byte[] serializeFrom(HttpSession session) throws IOException;
-
-  HttpSession deserializeInto(byte[] data, HttpSession session) throws IOException, ClassNotFoundException;
+  byte[] attributesHashFrom(RedisSession session) throws IOException;
+  byte[] serializeFrom(RedisSession session, SessionSerializationMetadata metadata) throws IOException;
+  void deserializeInto(byte[] data, RedisSession session, SessionSerializationMetadata metadata) throws IOException, ClassNotFoundException;
 }

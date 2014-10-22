@@ -67,6 +67,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
   protected RedisSessionHandlerValve handlerValve;
   protected ThreadLocal<RedisSession> currentSession = new ThreadLocal<>();
+  protected ThreadLocal<SessionSerializationMetadata> currentSessionSerializationMetadata = new ThreadLocal<>();
   protected ThreadLocal<String> currentSessionId = new ThreadLocal<>();
   protected ThreadLocal<Boolean> currentSessionIsPersisted = new ThreadLocal<>();
   protected Serializer serializer;
@@ -380,6 +381,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
       currentSession.set(session);
       currentSessionId.set(sessionId);
       currentSessionIsPersisted.set(false);
+      currentSessionSerializationMetadata.set(new SessionSerializationMetadata());
 
       if (null != session) {
         try {
@@ -417,26 +419,31 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
   @Override
   public Session findSession(String id) throws IOException {
-    RedisSession session;
+    RedisSession session = null;
 
-    if (id == null) {
-      session = null;
+    if (null == id) {
       currentSessionIsPersisted.set(false);
+      currentSession.set(null);
+      currentSessionSerializationMetadata.set(null);
+      currentSessionId.set(null);
     } else if (id.equals(currentSessionId.get())) {
       session = currentSession.get();
     } else {
-      session = loadSessionFromRedis(id);
-
-      if (session != null) {
+      byte[] data = loadSessionDataFromRedis(id);
+      if (data != null) {
+        DeserializedSessionContainer container = sessionFromSerializedData(id, data);
+        session = container.session;
+        currentSession.set(session);
+        currentSessionSerializationMetadata.set(container.metadata);
         currentSessionIsPersisted.set(true);
+        currentSessionId.set(id);
       } else {
         currentSessionIsPersisted.set(false);
-        id = null;
+        currentSession.set(null);
+        currentSessionSerializationMetadata.set(null);
+        currentSessionId.set(null);
       }
     }
-
-    currentSession.set(session);
-    currentSessionId.set(id);
 
     return session;
   }
@@ -485,9 +492,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     }
   }
 
-  public RedisSession loadSessionFromRedis(String id) throws IOException {
-    RedisSession session;
-
+  public byte[] loadSessionDataFromRedis(String id) throws IOException {
     Jedis jedis = null;
     Boolean error = true;
 
@@ -500,39 +505,52 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
       if (data == null) {
         log.trace("Session " + id + " not found in Redis");
-        session = null;
-      } else {
-        log.trace("Deserializing session " + id + " from Redis");
-        session = (RedisSession)createEmptySession();
-        serializer.deserializeInto(data, session);
-        session.setId(id);
-        session.setNew(false);
-        session.setMaxInactiveInterval(getMaxInactiveInterval() * 1000);
-        session.access();
-        session.setValid(true);
-        session.resetDirtyTracking();
-
-        if (log.isTraceEnabled()) {
-          log.trace("Session Contents [" + id + "]:");
-          Enumeration en = session.getAttributeNames();
-          while(en.hasMoreElements()) {
-            log.trace("  " + en.nextElement());
-          }
-        }
       }
 
-      return session;
-    } catch (IOException e) {
-      log.fatal(e.getMessage());
-      throw e;
-    } catch (ClassNotFoundException ex) {
-      log.fatal("Unable to deserialize into session", ex);
-      throw new IOException("Unable to deserialize into session", ex);
+      return data;
     } finally {
       if (jedis != null) {
         returnConnection(jedis, error);
       }
     }
+  }
+
+  public DeserializedSessionContainer sessionFromSerializedData(String id, byte[] data) throws IOException {
+    log.trace("Deserializing session " + id + " from Redis");
+
+    if (Arrays.equals(NULL_SESSION, data)) {
+      log.error("Encountered serialized session " + id + " with data equal to NULL_SESSION. This is a bug.");
+      throw new IOException("Serialized session data was equal to NULL_SESSION");
+    }
+
+    RedisSession session = null;
+    SessionSerializationMetadata metadata = new SessionSerializationMetadata();
+
+    try {
+      session = (RedisSession)createEmptySession();
+
+      serializer.deserializeInto(data, session, metadata);
+
+      session.setId(id);
+      session.setNew(false);
+      session.setMaxInactiveInterval(getMaxInactiveInterval() * 1000);
+      session.access();
+      session.setValid(true);
+      session.resetDirtyTracking();
+
+      if (log.isTraceEnabled()) {
+        log.trace("Session Contents [" + id + "]:");
+        Enumeration en = session.getAttributeNames();
+        while(en.hasMoreElements()) {
+          log.trace("  " + en.nextElement());
+        }
+      }
+    } catch (ClassNotFoundException ex) {
+      log.fatal("Unable to deserialize into session", ex);
+      throw new IOException("Unable to deserialize into session", ex);
+    }
+
+    return new DeserializedSessionContainer(session, metadata);
   }
 
   public void save(Session session) throws IOException {
@@ -571,17 +589,49 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         }
       }
 
-      Boolean sessionIsDirty = redisSession.isDirty();
-
-      redisSession.resetDirtyTracking();
       byte[] binaryId = redisSession.getId().getBytes();
 
-      Boolean isCurrentSessionPersisted = this.currentSessionIsPersisted.get();
-      if (forceSave || sessionIsDirty || (isCurrentSessionPersisted == null || !isCurrentSessionPersisted)) {
-        jedis.set(binaryId, serializer.serializeFrom(redisSession));
-      }
+      Boolean isCurrentSessionPersisted;
+      SessionSerializationMetadata sessionSerializationMetadata = currentSessionSerializationMetadata.get();
+      byte[] originalSessionAttributesHash = sessionSerializationMetadata.getSessionAttributesHash();
+      byte[] sessionAttributesHash = null;
+      if (
+           forceSave
+           || redisSession.isDirty()
+           || null == (isCurrentSessionPersisted = this.currentSessionIsPersisted.get())
+            || !isCurrentSessionPersisted
+           || !Arrays.equals(originalSessionAttributesHash, (sessionAttributesHash = serializer.attributesHashFrom(redisSession)))
+         ) {
 
-      currentSessionIsPersisted.set(true);
+        log.trace("Save was determined to be necessary");
+
+        /*if (forceSave) {
+          log.info("save was necessary: forceSave=true");
+        } else if (redisSession.isDirty()) {
+          log.info("save was necessary: isDirty()=true");
+        } else if (null == (isCurrentSessionPersisted = this.currentSessionIsPersisted.get())) {
+          log.info("save was necessary: isCurrentSessionPersisted=null");
+        } else if (!isCurrentSessionPersisted) {
+          log.info("save was necessary: isCurrentSessionPersisted=false");
+        } else if (!Arrays.equals(originalSessionAttributesHash, (sessionAttributesHash = serializer.attributesHashFrom(redisSession)))) {
+          log.info("save was necessary: sessionsAttributeHashChanged: orig=" + new String(Base64.encodeBase64(originalSessionAttributesHash)) + " new=" + new String(Base64.encodeBase64(sessionAttributesHash)));
+        }*/
+
+        if (null == sessionAttributesHash) {
+          sessionAttributesHash = serializer.attributesHashFrom(redisSession);
+        }
+
+        SessionSerializationMetadata updatedSerializationMetadata = new SessionSerializationMetadata();
+        updatedSerializationMetadata.setSessionAttributesHash(sessionAttributesHash);
+
+        jedis.set(binaryId, serializer.serializeFrom(redisSession, updatedSerializationMetadata));
+
+        redisSession.resetDirtyTracking();
+        currentSessionSerializationMetadata.set(updatedSerializationMetadata);
+        currentSessionIsPersisted.set(true);
+      } else {
+        log.trace("Save was determined to be unnecessary");
+      }
 
       log.trace("Setting expire timeout on session [" + redisSession.getId() + "] to " + getMaxInactiveInterval());
       jedis.expire(binaryId, getMaxInactiveInterval());
@@ -832,5 +882,14 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
   public void setJmxNamePrefix(String jmxNamePrefix) {
     this.connectionPoolConfig.setJmxNamePrefix(jmxNamePrefix);
+  }
+}
+
+class DeserializedSessionContainer {
+  public final RedisSession session;
+  public final SessionSerializationMetadata metadata;
+  public DeserializedSessionContainer(RedisSession session, SessionSerializationMetadata metadata) {
+    this.session = session;
+    this.metadata = metadata;
   }
 }
