@@ -7,6 +7,11 @@ repositories {
   mavenCentral()
 }
 
+compileJava {
+  sourceCompatibility = 1.7
+  targetCompatibility = 1.7
+}
+
 dependencies {
   providedCompile group: 'org.apache.tomcat', name: 'tomcat-catalina', version: '7.0.27'
   compile group: 'redis.clients', name: 'jedis', version: '2.5.2'
