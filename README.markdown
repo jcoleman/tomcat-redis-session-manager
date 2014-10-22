@@ -125,6 +125,25 @@ Since each situation is different, the manager gives you several options which c
 - `SAVE_ON_CHANGE`: every time `session.setAttribute()` or `session.removeAttribute()` is called the session will be saved. __Note:__ This feature cannot detect changes made to objects already stored in a specific session attribute. __Tradeoffs__: This option will degrade performance slightly as any change to the session will save the session synchronously to Redis.
 - `ALWAYS_SAVE_AFTER_REQUEST`: force saving after every request, regardless of whether or not the manager has detected changes to the session. This option is particularly useful if you make changes to objects already stored in a specific session attribute. __Tradeoff:__ This option make actually increase the liklihood of race conditions if not all of your requests change the session.
 
+
+Testing/Example App
+-------------------
+
+For full integration testing as well as a demonstration of how to use the session manager, this project contains an example app and a virtual server setup via Vagrant and Chef.
+
+To get the example server up and running, you'll need to do the following:
+1. Download and install Virtual Box (4.3.12 at the time of this writing) from https://www.virtualbox.org/wiki/Downloads
+1. Download and install the latest version (1.6.3 at the time of this writing) of Vagrant from http://www.vagrantup.com/downloads.html
+1. Install Ruby, if necessary.
+1. Install Berkshelf with `gem install berkshelf`
+1. Install the Vagrant Berkshelf plugin with `vagrant plugin install vagrant-berkshelf --plugin-version '>= 2.0.1'`
+1. Install the Vagrant Cachier plugin for _speed_ with `vagrant plugin install vagrant-cachier`
+1. Install the Vagrant Omnibus plugin with `vagrant plugin install vagrant-omnibus`
+1. Install the required Ruby gems with `PROJECT_ROOT/bundle install`
+1. Boot the virtual machine with `PROJECT_ROOT/vagrant up`
+1. Run the tests with `PROJECT_ROOT/rspec`
+
+
 Acknowledgements
 ----------------
 
