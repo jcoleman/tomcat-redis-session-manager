@@ -12,6 +12,21 @@ The manager relies on the native expiration capability of Redis to expire keys f
 
 Data stored in the session must be Serializable.
 
+
+Support this project!
+---------------------
+
+This is an open-source project. Currently I'm not using this for anything personal or professional, so I'm not able to commit much time to the project, though I attempt to merge in reasonable pull requests. If you like to support further development of this project, you can donate via Pledgie:
+
+<a href='https://pledgie.com/campaigns/26802'><img alt='Click here to lend your support to: Tomcat Redis Session Manager and make a donation at pledgie.com !' src='https://pledgie.com/campaigns/26802.png?skin_name=chrome' border='0' ></a>
+
+
+Commercial Support
+------------------
+
+If your business depends on Tomcat and persistent sessions and you need a specific feature this project doesn't yet support, a quick bug fix you don't have time to author, or commercial support when things go wrong, I can provide support on a contractual support through my consultancy, Orange Function, LLC. If you have any questions or would like to begin discussing a deal, please contact me via email at james@orangefunction.com.
+
+
 Tomcat Versions
 ---------------
 
@@ -38,18 +53,30 @@ Usage
 
 Add the following into your Tomcat context.xml (or the context block of the server.xml if applicable.)
 
-    <Valve className="com.radiadesign.catalina.session.RedisSessionHandlerValve" />
-    <Manager className="com.radiadesign.catalina.session.RedisSessionManager"
+    <Valve className="com.orangefunction.tomcat.redissessions.RedisSessionHandlerValve" />
+    <Manager className="com.orangefunction.tomcat.redissessions.RedisSessionManager"
              host="localhost" <!-- optional: defaults to "localhost" -->
              port="6379" <!-- optional: defaults to "6379" -->
              database="0" <!-- optional: defaults to "0" -->
-             maxInactiveInterval="60" <!-- optional: defaults to "60" (in seconds) --> />
+             maxInactiveInterval="60" <!-- optional: defaults to "60" (in seconds) -->
+             sessionPersistPolicies="PERSIST_POLICY_1,PERSIST_POLICY_2,.." <!-- optional -->
+             sentinelMaster="SentinelMasterName" <!-- optional -->
+             sentinels="sentinel-host-1:port,sentinel-host-2:port,.." <!-- optional --> />
 
 The Valve must be declared before the Manager.
 
-Copy the tomcat-redis-session-manager.jar and jedis-2.0.0.jar files into the `lib` directory of your Tomcat installation.
+Copy the following files into the `TOMCAT_BASE/lib` directory:
+
+* tomcat-redis-session-manager-VERSION.jar
+* jedis-2.5.2.jar
+* commons-pool2-2.2.jar
 
 Reboot the server, and sessions should now be stored in Redis.
+
+Connection Pool Configuration
+-----------------------------
+
+All of the configuration options from both `org.apache.commons.pool2.impl.GenericObjectPoolConfig` and `org.apache.commons.pool2.impl.BaseObjectPoolConfig` are also configurable for the Redis connection pool used by the session manager. To configure any of these attributes (e.g., `maxIdle` and `testOnBorrow`) just use the config attribute name prefixed with `connectionPool` (e.g., `connectionPoolMaxIdle` and `connectionPoolTestOnBorrow`) and set the desired value in the `<Manager>` declaration in your Tomcat context.xml.
 
 Session Change Tracking
 -----------------------
@@ -88,20 +115,34 @@ Then the example above would look like this:
     myArray.add(additionalArrayValue);
     session.setAttribute("customDirtyFlag");
 
+Persistence Policies
+--------------------
 
-Possible Issues
----------------
+With an persistent session storage there is going to be the distinct possibility of race conditions when requests for the same session overlap/occur concurrently. Additionally, because the session manager works by serializing the entire session object into Redis, concurrent updating of the session will exhibit last-write-wins behavior for the entire session (not just specific session attributes).
 
-There is the possibility of a race condition that would cause seeming invisibility of the session immediately after your web application logs in a user: if the response has finished streaming and the client requests a new page before the valve has been able to complete saving the session into Redis, then the new request will not see the session.
+Since each situation is different, the manager gives you several options which control the details of when/how sessions are persisted. Each of the following options may be selected by setting the `sessionPersistPolicies="PERSIST_POLICY_1,PERSIST_POLICY_2,.."` attributes in your manager declaration in Tomcat's context.xml. Unless noted otherwise, the various options are all combinable.
 
-This condition will be detected by the session manager and a java.lang.IllegalStateException with the message `Race condition encountered: attempted to load session[SESSION_ID] which has been created but not yet serialized.` will be thrown.
+- `SAVE_ON_CHANGE`: every time `session.setAttribute()` or `session.removeAttribute()` is called the session will be saved. __Note:__ This feature cannot detect changes made to objects already stored in a specific session attribute. __Tradeoffs__: This option will degrade performance slightly as any change to the session will save the session synchronously to Redis.
+- `ALWAYS_SAVE_AFTER_REQUEST`: force saving after every request, regardless of whether or not the manager has detected changes to the session. This option is particularly useful if you make changes to objects already stored in a specific session attribute. __Tradeoff:__ This option make actually increase the liklihood of race conditions if not all of your requests change the session.
 
-Normally this should be incredibly unlikely (insert joke about programmers and "this should never happen" statements here) since the connection to save the session into Redis is almost guaranteed to be faster than the latency between a client receiving the response, processing it, and starting a new request.
 
-Possible solutions:
+Testing/Example App
+-------------------
 
-- Enable the "save on change" feature by setting `saveOnChange` to `true` in your manager declaration in Tomcat's context.xml. Using this feature will degrade performance slightly as any change to the session will save the session synchronously to Redis, and technically this will still exhibit slight race condition behavior, but it eliminates as much possiblity of errors occurring as possible.
-- If you encounter errors, then you can force save the session early (before sending a response to the client) then you can retrieve the current session, and call `currentSession.manager.save(currentSession)` to synchronously eliminate the race condition. Note: this will only work directly if your application has the actual session object directly exposed. Many frameworks (and often even Tomcat) will expose the session in their own wrapper HttpSession implementing class. You may be able to dig through these layers to expose the actual underlying RedisSession instance--if so, then using that instance will allow you to implement the workaround.
+For full integration testing as well as a demonstration of how to use the session manager, this project contains an example app and a virtual server setup via Vagrant and Chef.
+
+To get the example server up and running, you'll need to do the following:
+1. Download and install Virtual Box (4.3.12 at the time of this writing) from https://www.virtualbox.org/wiki/Downloads
+1. Download and install the latest version (1.6.3 at the time of this writing) of Vagrant from http://www.vagrantup.com/downloads.html
+1. Install Ruby, if necessary.
+1. Install Berkshelf with `gem install berkshelf`
+1. Install the Vagrant Berkshelf plugin with `vagrant plugin install vagrant-berkshelf --plugin-version '>= 2.0.1'`
+1. Install the Vagrant Cachier plugin for _speed_ with `vagrant plugin install vagrant-cachier`
+1. Install the Vagrant Omnibus plugin with `vagrant plugin install vagrant-omnibus`
+1. Install the required Ruby gems with `PROJECT_ROOT/bundle install`
+1. Boot the virtual machine with `PROJECT_ROOT/vagrant up`
+1. Run the tests with `PROJECT_ROOT/rspec`
+
 
 Acknowledgements
 ----------------
