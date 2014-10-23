@@ -186,7 +186,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
   }
 
   public void setSentinelMaster(String master) {
-    this.sentinelMaster = sentinelMaster;
+    this.sentinelMaster = master;
   }
 
   @Override
