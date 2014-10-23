@@ -37,7 +37,7 @@ public class JavaSerializer implements Serializer {
          ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(bos));
     ) {
       oos.writeUnshared(attributes);
-
+      oos.flush();
       serialized = bos.toByteArray();
     }
 
@@ -60,7 +60,7 @@ public class JavaSerializer implements Serializer {
     ) {
       oos.writeObject(metadata);
       session.writeObjectData(oos);
-
+      oos.flush();
       serialized = bos.toByteArray();
     }
 
