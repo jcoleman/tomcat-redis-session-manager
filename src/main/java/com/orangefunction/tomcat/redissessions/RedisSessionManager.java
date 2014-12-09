@@ -605,18 +605,6 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
         log.trace("Save was determined to be necessary");
 
-        /*if (forceSave) {
-          log.info("save was necessary: forceSave=true");
-        } else if (redisSession.isDirty()) {
-          log.info("save was necessary: isDirty()=true");
-        } else if (null == (isCurrentSessionPersisted = this.currentSessionIsPersisted.get())) {
-          log.info("save was necessary: isCurrentSessionPersisted=null");
-        } else if (!isCurrentSessionPersisted) {
-          log.info("save was necessary: isCurrentSessionPersisted=false");
-        } else if (!Arrays.equals(originalSessionAttributesHash, (sessionAttributesHash = serializer.attributesHashFrom(redisSession)))) {
-          log.info("save was necessary: sessionsAttributeHashChanged: orig=" + new String(Base64.encodeBase64(originalSessionAttributesHash)) + " new=" + new String(Base64.encodeBase64(sessionAttributesHash)));
-        }*/
-
         if (null == sessionAttributesHash) {
           sessionAttributesHash = serializer.attributesHashFrom(redisSession);
         }
