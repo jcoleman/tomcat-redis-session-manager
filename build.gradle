@@ -3,7 +3,7 @@ apply plugin: 'maven'
 apply plugin: 'signing'
 
 group = 'com.orangefunction'
-version = '2.0.0-tomcat8'
+version = '2.0.3-tomcat8-gravie'
 
 repositories {
   mavenCentral()
