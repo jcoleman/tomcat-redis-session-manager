@@ -533,7 +533,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
       session.setId(id);
       session.setNew(false);
-      session.setMaxInactiveInterval(getMaxInactiveInterval() * 1000);
+      session.setMaxInactiveInterval(getMaxInactiveInterval());
       session.access();
       session.setValid(true);
       session.resetDirtyTracking();
