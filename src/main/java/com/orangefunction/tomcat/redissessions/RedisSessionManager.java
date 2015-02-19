@@ -422,10 +422,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     RedisSession session = null;
 
     if (null == id) {
-      currentSessionIsPersisted.set(false);
-      currentSession.set(null);
-      currentSessionSerializationMetadata.set(null);
-      currentSessionId.set(null);
+      return null;
     } else if (id.equals(currentSessionId.get())) {
       session = currentSession.get();
     } else {
@@ -437,11 +434,6 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         currentSessionSerializationMetadata.set(container.metadata);
         currentSessionIsPersisted.set(true);
         currentSessionId.set(id);
-      } else {
-        currentSessionIsPersisted.set(false);
-        currentSession.set(null);
-        currentSessionSerializationMetadata.set(null);
-        currentSessionId.set(null);
       }
     }
 
