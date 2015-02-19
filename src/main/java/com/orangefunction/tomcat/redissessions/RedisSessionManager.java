@@ -430,6 +430,10 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
       if (data != null) {
         DeserializedSessionContainer container = sessionFromSerializedData(id, data);
         session = container.session;
+        currentSession.set(session);
+        currentSessionSerializationMetadata.set(container.metadata);
+        currentSessionIsPersisted.set(true);
+        currentSessionId.set(id);
       }
     }
 
