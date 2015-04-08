@@ -344,19 +344,13 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
       // Ensure generation of a unique session identifier.
       if (null != requestedSessionId) {
-        sessionId = requestedSessionId;
-        if (jvmRoute != null) {
-          sessionId += '.' + jvmRoute;
-        }
+        sessionId = sessionIdWithJvmRoute(requestedSessionId, jvmRoute);
         if (jedis.setnx(sessionId.getBytes(), NULL_SESSION) == 0L) {
           sessionId = null;
         }
       } else {
         do {
-          sessionId = generateSessionId();
-          if (jvmRoute != null) {
-            sessionId += '.' + jvmRoute;
-          }
+          sessionId = sessionIdWithJvmRoute(generateSessionId(), jvmRoute);
         } while (jedis.setnx(sessionId.getBytes(), NULL_SESSION) == 0L); // 1 = key set; 0 = key already existed
       }
 
@@ -400,6 +394,14 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     }
 
     return session;
+  }
+
+  private String sessionIdWithJvmRoute(String sessionId, String jvmRoute) {
+    if (jvmRoute != null) {
+      String jvmRoutePrefix = '.' + jvmRoute;
+      return sessionId.endsWith(jvmRoutePrefix) ? sessionId : sessionId + jvmRoutePrefix;
+    }
+    return sessionId;
   }
 
   @Override
