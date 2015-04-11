@@ -3,7 +3,7 @@ apply plugin: 'maven'
 apply plugin: 'signing'
 
 group = 'com.orangefunction'
-version = '2.0.0'
+version = '2.0.3-tomcat8-gravie'
 
 repositories {
   mavenCentral()
@@ -15,7 +15,7 @@ compileJava {
 }
 
 dependencies {
-  compile group: 'org.apache.tomcat', name: 'tomcat-catalina', version: '7.0.27'
+  compile group: 'org.apache.tomcat', name: 'tomcat-catalina', version: '8.0.15'
   compile group: 'redis.clients', name: 'jedis', version: '2.5.2'
   compile group: 'org.apache.commons', name: 'commons-pool2', version: '2.2'
   //compile group: 'commons-codec', name: 'commons-codec', version: '1.9'
