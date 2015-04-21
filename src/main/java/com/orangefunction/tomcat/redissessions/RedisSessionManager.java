@@ -4,11 +4,15 @@ import org.apache.catalina.Lifecycle;
 import org.apache.catalina.LifecycleException;
 import org.apache.catalina.LifecycleListener;
 import org.apache.catalina.util.LifecycleSupport;
+import org.apache.catalina.Container;
+import org.apache.catalina.Context;
 import org.apache.catalina.LifecycleState;
 import org.apache.catalina.Loader;
 import org.apache.catalina.Valve;
 import org.apache.catalina.Session;
 import org.apache.catalina.session.ManagerBase;
+
+
 
 
 import redis.clients.util.Pool;
@@ -124,6 +128,23 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
 	public void setSerializationStrategyClass(String strategy) {
 		this.serializationStrategyClass = strategy;
+	}
+	
+	@Override
+	public void setContainer(Container container) {
+        // De-register from the old Container (if any)
+        if ((this.container != null) && (this.container instanceof Context))
+            ((Context) this.container).removePropertyChangeListener(this);
+
+        Container oldContainer = this.container;
+        this.container = container;
+        support.firePropertyChange("container", oldContainer, this.container);
+
+        // Register with the new Container (if any)
+        if ((this.container != null) && (this.container instanceof Context)) {
+            setMaxInactiveInterval ( maxInactiveInterval );
+            ((Context) this.container).addPropertyChangeListener(this);
+        }
 	}
 
 	public String getSessionPersistPolicies() {
