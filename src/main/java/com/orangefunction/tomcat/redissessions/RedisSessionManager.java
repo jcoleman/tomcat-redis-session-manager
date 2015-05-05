@@ -10,9 +10,6 @@ import org.apache.catalina.Valve;
 import org.apache.catalina.Session;
 import org.apache.catalina.session.ManagerBase;
 
-import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
-import org.apache.commons.pool2.impl.BaseObjectPoolConfig;
-
 import redis.clients.util.Pool;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisSentinelPool;
@@ -22,7 +19,6 @@ import redis.clients.jedis.Protocol;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Set;
 import java.util.EnumSet;
@@ -341,17 +337,20 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     Jedis jedis = null;
     try {
       jedis = acquireConnection();
-
+      String redisSessionIdKey = null;
       // Ensure generation of a unique session identifier.
       if (null != requestedSessionId) {
-        sessionId = sessionIdWithJvmRoute(requestedSessionId, jvmRoute);
-        if (jedis.setnx(sessionId.getBytes(), NULL_SESSION) == 0L) {
+        sessionId = requestedSessionId;
+
+        redisSessionIdKey = stripJvmRoute(requestedSessionId, jvmRoute);
+        if (jedis.setnx(redisSessionIdKey.getBytes(), NULL_SESSION) == 0L) {
           sessionId = null;
         }
       } else {
         do {
-          sessionId = sessionIdWithJvmRoute(generateSessionId(), jvmRoute);
-        } while (jedis.setnx(sessionId.getBytes(), NULL_SESSION) == 0L); // 1 = key set; 0 = key already existed
+          sessionId = generateSessionId();
+          redisSessionIdKey = stripJvmRoute(sessionId, jvmRoute);
+        } while (jedis.setnx(redisSessionIdKey.getBytes(), NULL_SESSION) == 0L); // 1 = key set; 0 = key already existed
       }
 
       /* Even though the key is set in Redis, we are not going to flag
@@ -396,10 +395,10 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     return session;
   }
 
-  private String sessionIdWithJvmRoute(String sessionId, String jvmRoute) {
-    if (jvmRoute != null) {
-      String jvmRoutePrefix = '.' + jvmRoute;
-      return sessionId.endsWith(jvmRoutePrefix) ? sessionId : sessionId + jvmRoutePrefix;
+  String stripJvmRoute(String sessionId, String jvmRoute) {
+    if (jvmRoute != null && sessionId != null) {
+      final int index = sessionId.indexOf('.');
+      sessionId = index != -1 ? sessionId.substring(0, index) : sessionId;
     }
     return sessionId;
   }
