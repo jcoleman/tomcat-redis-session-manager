@@ -498,10 +498,11 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     Boolean error = true;
 
     try {
-      log.trace("Attempting to load session " + id + " from Redis");
+      final String redisSessionIdKey = stripJvmRoute(id, getJvmRoute());
+      log.trace("Attempting to load session " + id + " with key " + redisSessionIdKey + " from Redis");
 
       jedis = acquireConnection();
-      byte[] data = jedis.get(id.getBytes());
+      byte[] data = jedis.get(redisSessionIdKey.getBytes());
       error = false;
 
       if (data == null) {
@@ -582,15 +583,18 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
       RedisSession redisSession = (RedisSession)session;
 
+      final String sessionId = redisSession.getId();
+      final String redisStorageKey = stripJvmRoute(sessionId, getJvmRoute());
+
       if (log.isTraceEnabled()) {
-        log.trace("Session Contents [" + redisSession.getId() + "]:");
+        log.trace("Session Contents [" + sessionId + "]:");
         Enumeration en = redisSession.getAttributeNames();
         while(en.hasMoreElements()) {
           log.trace("  " + en.nextElement());
         }
       }
 
-      byte[] binaryId = redisSession.getId().getBytes();
+      final byte[] binaryId = redisStorageKey.getBytes();
 
       Boolean isCurrentSessionPersisted;
       SessionSerializationMetadata sessionSerializationMetadata = currentSessionSerializationMetadata.get();
@@ -622,7 +626,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         log.trace("Save was determined to be unnecessary");
       }
 
-      log.trace("Setting expire timeout on session [" + redisSession.getId() + "] to " + getMaxInactiveInterval());
+      log.trace("Setting expire timeout on session [" + sessionId + "] to " + getMaxInactiveInterval());
       jedis.expire(binaryId, getMaxInactiveInterval());
 
       error = false;
