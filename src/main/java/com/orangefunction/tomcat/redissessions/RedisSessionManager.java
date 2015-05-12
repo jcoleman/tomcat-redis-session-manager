@@ -380,7 +380,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         try {
           error = saveInternal(jedis, session, true);
         } catch (IOException ex) {
-          log.error("Error saving newly created session: " + ex.getMessage());
+          log.error(String.format("Error saving newly created session [%s]: %s", sessionId, ex.getMessage()), ex);
           currentSession.set(null);
           currentSessionId.set(null);
           session = null;
@@ -413,7 +413,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     try {
       save(session);
     } catch (IOException ex) {
-      log.warn("Unable to add to session manager store: " + ex.getMessage());
+      log.warn("Unable to add to session manager store: " + ex.getMessage(), ex);
       throw new RuntimeException("Unable to add to session manager store.", ex);
     }
   }
@@ -522,7 +522,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
     if (Arrays.equals(NULL_SESSION, data)) {
       log.error("Encountered serialized session " + id + " with data equal to NULL_SESSION. This is a bug.");
-      throw new IOException("Serialized session data was equal to NULL_SESSION");
+      throw new IOException(String.format("Serialized session data for the session id [%s] was equal to NULL_SESSION", id));
     }
 
     RedisSession session = null;
@@ -633,8 +633,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
       return error;
     } catch (IOException e) {
-      log.error(e.getMessage());
-
+      log.error(String.format("Exception encountered when performing saveInternal with the key [%s]", session.getId()), e);
       throw e;
     } finally {
       return error;
@@ -667,8 +666,11 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
   public void afterRequest() {
     RedisSession redisSession = currentSession.get();
     if (redisSession != null) {
+      final String sessionId = redisSession.getId();
+      final boolean validSession = redisSession.isValid();
+
       try {
-        if (redisSession.isValid()) {
+        if (validSession) {
           log.trace("Request with session completed, saving session " + redisSession.getId());
           save(redisSession, getAlwaysSaveAfterRequest());
         } else {
@@ -676,7 +678,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
           remove(redisSession);
         }
       } catch (Exception e) {
-        log.error("Error storing/removing session", e);
+        log.error(String.format("Error %s session with the id [%s]", validSession ? "storing" : "removing", sessionId), e);
       } finally {
         currentSession.remove();
         currentSessionId.remove();
@@ -706,7 +708,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         connectionPool = new JedisPool(this.connectionPoolConfig, getHost(), getPort(), getTimeout(), getPassword());
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      log.error("Exception while initializing JedisPool", e);
       throw new LifecycleException("Error connecting to Redis", e);
     }
   }
