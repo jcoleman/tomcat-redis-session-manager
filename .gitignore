@@ -1,5 +1,6 @@
 .gradle/*
 build/*
+target/*
 example-app/build/*
 example-app/.gradle/*
 .DS_Store
