@@ -1,2 +1,0 @@
-include ":tomcat-redis-session-manager"
-project(":tomcat-redis-session-manager").projectDir = new File(rootDir, "../")
