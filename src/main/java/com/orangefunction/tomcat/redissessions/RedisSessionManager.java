@@ -1,36 +1,31 @@
 package com.orangefunction.tomcat.redissessions;
 
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.Enumeration;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Set;
+
 import org.apache.catalina.Lifecycle;
 import org.apache.catalina.LifecycleException;
 import org.apache.catalina.LifecycleListener;
-import org.apache.catalina.util.LifecycleSupport;
 import org.apache.catalina.LifecycleState;
 import org.apache.catalina.Loader;
-import org.apache.catalina.Valve;
 import org.apache.catalina.Session;
+import org.apache.catalina.Valve;
 import org.apache.catalina.session.ManagerBase;
-
-import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
-import org.apache.commons.pool2.impl.BaseObjectPoolConfig;
-
-import redis.clients.util.Pool;
-import redis.clients.jedis.JedisPool;
-import redis.clients.jedis.JedisSentinelPool;
-import redis.clients.jedis.JedisPoolConfig;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.Protocol;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.Set;
-import java.util.EnumSet;
-import java.util.HashSet;
-import java.util.Iterator;
-
+import org.apache.catalina.util.LifecycleSupport;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
+
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPoolConfig;
+import redis.clients.jedis.JedisSentinelPool;
+import redis.clients.jedis.Protocol;
+import redis.clients.util.Pool;
 
 
 public class RedisSessionManager extends ManagerBase implements Lifecycle {
