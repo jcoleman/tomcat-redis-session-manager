@@ -10,9 +10,6 @@ import org.apache.catalina.Valve;
 import org.apache.catalina.Session;
 import org.apache.catalina.session.ManagerBase;
 
-import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
-import org.apache.commons.pool2.impl.BaseObjectPoolConfig;
-
 import redis.clients.util.Pool;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisSentinelPool;
@@ -22,7 +19,6 @@ import redis.clients.jedis.Protocol;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Set;
 import java.util.EnumSet;
@@ -66,10 +62,10 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
   protected JedisPoolConfig connectionPoolConfig = new JedisPoolConfig();
 
   protected RedisSessionHandlerValve handlerValve;
-  protected ThreadLocal<RedisSession> currentSession = new ThreadLocal<>();
-  protected ThreadLocal<SessionSerializationMetadata> currentSessionSerializationMetadata = new ThreadLocal<>();
-  protected ThreadLocal<String> currentSessionId = new ThreadLocal<>();
-  protected ThreadLocal<Boolean> currentSessionIsPersisted = new ThreadLocal<>();
+  protected ThreadLocal<RedisSession> currentSession = new ThreadLocal<RedisSession>();
+  protected ThreadLocal<SessionSerializationMetadata> currentSessionSerializationMetadata = new ThreadLocal<SessionSerializationMetadata>();
+  protected ThreadLocal<String> currentSessionId = new ThreadLocal<String>();
+  protected ThreadLocal<Boolean> currentSessionIsPersisted = new ThreadLocal<Boolean>();
   protected Serializer serializer;
 
   protected static String name = "RedisSessionManager";
@@ -293,7 +289,13 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
     try {
       initializeSerializer();
-    } catch (ClassNotFoundException | InstantiationException | IllegalAccessException e) {
+    } catch (ClassNotFoundException e) {
+      log.fatal("Unable to load serializer", e);
+      throw new LifecycleException(e);
+    } catch (InstantiationException e) {
+      log.fatal("Unable to load serializer", e);
+      throw new LifecycleException(e);
+    } catch (IllegalAccessException e) {
       log.fatal("Unable to load serializer", e);
       throw new LifecycleException(e);
     }
@@ -714,8 +716,8 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
     Loader loader = null;
 
-    if (getContainer() != null) {
-      loader = getContainer().getLoader();
+    if (getContext() != null) {
+      loader = getContext().getLoader();
     }
 
     ClassLoader classLoader = null;
