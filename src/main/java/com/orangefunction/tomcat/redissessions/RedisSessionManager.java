@@ -8,15 +8,8 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 
-import org.apache.catalina.Lifecycle;
-import org.apache.catalina.LifecycleException;
-import org.apache.catalina.LifecycleListener;
-import org.apache.catalina.LifecycleState;
-import org.apache.catalina.Loader;
-import org.apache.catalina.Session;
-import org.apache.catalina.Valve;
+import org.apache.catalina.*;
 import org.apache.catalina.session.ManagerBase;
-import org.apache.catalina.util.LifecycleSupport;
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
 
@@ -30,55 +23,33 @@ import redis.clients.util.Pool;
 
 public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
-    enum SessionPersistPolicy {
-        DEFAULT,
-        SAVE_ON_CHANGE,
-        ALWAYS_SAVE_AFTER_REQUEST;
-
-        static SessionPersistPolicy fromName(String name) {
-            for (SessionPersistPolicy policy : SessionPersistPolicy.values()) {
-                if (policy.name().equalsIgnoreCase(name)) {
-                    return policy;
-                }
-            }
-            throw new IllegalArgumentException("Invalid session persist policy [" + name + "]. Must be one of " + Arrays.asList(SessionPersistPolicy.values()) + ".");
-        }
-    }
-
-    protected byte[] NULL_SESSION = "null".getBytes();
+    protected static String name = "RedisSessionManager";
+    private final byte[] NULL_SESSION = "null".getBytes();
 
     private final Log log = LogFactory.getLog(RedisSessionManager.class);
-
-    protected String host = "localhost";
-    protected int port = 6379;
-    protected int database = 0;
-    protected String password = null;
-    protected int timeout = Protocol.DEFAULT_TIMEOUT;
-    protected String sentinelMaster = null;
-    Set<String> sentinelSet = null;
-
-    protected Pool<Jedis> connectionPool;
-    protected JedisPoolConfig connectionPoolConfig = new JedisPoolConfig();
-
-    protected RedisSessionHandlerValve handlerValve;
-    protected ThreadLocal<RedisSession> currentSession = new ThreadLocal<>();
-    protected ThreadLocal<SessionSerializationMetadata> currentSessionSerializationMetadata = new ThreadLocal<>();
-    protected ThreadLocal<String> currentSessionId = new ThreadLocal<>();
-    protected ThreadLocal<Boolean> currentSessionIsPersisted = new ThreadLocal<>();
-    protected Serializer serializer;
-
-    protected static String name = "RedisSessionManager";
-
-    protected String serializationStrategyClass = "com.orangefunction.tomcat.redissessions.JavaSerializer";
-
-    protected EnumSet<SessionPersistPolicy> sessionPersistPoliciesSet = EnumSet.of(SessionPersistPolicy.DEFAULT);
+    private final JedisPoolConfig connectionPoolConfig = new JedisPoolConfig();
+    private final ThreadLocal<RedisSession> currentSession = new ThreadLocal<>();
+    private final ThreadLocal<SessionSerializationMetadata> currentSessionSerializationMetadata = new ThreadLocal<>();
+    private final ThreadLocal<String> currentSessionId = new ThreadLocal<>();
+    private final ThreadLocal<Boolean> currentSessionIsPersisted = new ThreadLocal<>();
+    private String host = "localhost";
+    private int port = 6379;
+    private int database = 0;
+    private String password = null;
+    private int timeout = Protocol.DEFAULT_TIMEOUT;
+    private String sentinelMaster = null;
+    private Set<String> sentinelSet = null;
+    private Pool<Jedis> connectionPool;
+    private RedisSessionHandlerValve handlerValve;
+    private Serializer serializer;
+    private String serializationStrategyClass = "com.orangefunction.tomcat.redissessions.JavaSerializer";
+    private EnumSet<SessionPersistPolicy> sessionPersistPoliciesSet = EnumSet.of(SessionPersistPolicy.DEFAULT);
 
     /**
      * The lifecycle event support for this component.
      */
-    protected LifecycleSupport lifecycle = new LifecycleSupport(this);
-
-    public String getHost() {
+    //    protected LifecycleSupport lifecycle = new LifecycleSupport(this);
+    private String getHost() {
         return host;
     }
 
@@ -86,7 +57,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         this.host = host;
     }
 
-    public int getPort() {
+    private int getPort() {
         return port;
     }
 
@@ -94,7 +65,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         this.port = port;
     }
 
-    public int getDatabase() {
+    private int getDatabase() {
         return database;
     }
 
@@ -102,7 +73,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         this.database = database;
     }
 
-    public int getTimeout() {
+    private int getTimeout() {
         return timeout;
     }
 
@@ -110,7 +81,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         this.timeout = timeout;
     }
 
-    public String getPassword() {
+    private String getPassword() {
         return password;
     }
 
@@ -148,7 +119,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         return this.sessionPersistPoliciesSet.contains(SessionPersistPolicy.SAVE_ON_CHANGE);
     }
 
-    public boolean getAlwaysSaveAfterRequest() {
+    private boolean getAlwaysSaveAfterRequest() {
         return this.sessionPersistPoliciesSet.contains(SessionPersistPolicy.ALWAYS_SAVE_AFTER_REQUEST);
     }
 
@@ -169,14 +140,14 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         }
 
         String[] sentinelArray = sentinels.split(",");
-        this.sentinelSet = new HashSet<String>(Arrays.asList(sentinelArray));
+        this.sentinelSet = new HashSet<>(Arrays.asList(sentinelArray));
     }
 
-    public Set<String> getSentinelSet() {
+    private Set<String> getSentinelSet() {
         return this.sentinelSet;
     }
 
-    public String getSentinelMaster() {
+    private String getSentinelMaster() {
         return this.sentinelMaster;
     }
 
@@ -190,11 +161,12 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         return 0;
     }
 
+    @SuppressWarnings("EmptyMethod")
     public void setRejectedSessions(int i) {
         // Do nothing.
     }
 
-    protected Jedis acquireConnection() {
+    private Jedis acquireConnection() {
         Jedis jedis = connectionPool.getResource();
 
         if (getDatabase() != 0) {
@@ -204,10 +176,12 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         return jedis;
     }
 
-    protected void returnConnection(Jedis jedis, Boolean error) {
+    private void returnConnection(Jedis jedis, Boolean error) {
         if (error) {
+            //noinspection deprecation
             connectionPool.returnBrokenResource(jedis);
         } else {
+            //noinspection deprecation
             connectionPool.returnResource(jedis);
         }
     }
@@ -227,36 +201,6 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     }
 
     /**
-     * Add a lifecycle event listener to this component.
-     *
-     * @param listener The listener to add
-     */
-    @Override
-    public void addLifecycleListener(LifecycleListener listener) {
-        lifecycle.addLifecycleListener(listener);
-    }
-
-    /**
-     * Get the lifecycle listeners associated with this lifecycle. If this
-     * Lifecycle has no listeners registered, a zero-length array is returned.
-     */
-    @Override
-    public LifecycleListener[] findLifecycleListeners() {
-        return lifecycle.findLifecycleListeners();
-    }
-
-
-    /**
-     * Remove a lifecycle event listener from this component.
-     *
-     * @param listener The listener to remove
-     */
-    @Override
-    public void removeLifecycleListener(LifecycleListener listener) {
-        lifecycle.removeLifecycleListener(listener);
-    }
-
-    /**
      * Start this component and implement the requirements
      * of {@link org.apache.catalina.util.LifecycleBase#startInternal()}.
      *
@@ -270,7 +214,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         setState(LifecycleState.STARTING);
 
         Boolean attachedToValve = false;
-        for (Valve valve : getContainer().getPipeline().getValves()) {
+        for (Valve valve : getContext().getPipeline().getValves()) {
             if (valve instanceof RedisSessionHandlerValve) {
                 this.handlerValve = (RedisSessionHandlerValve) valve;
                 this.handlerValve.setRedisSessionManager(this);
@@ -293,13 +237,43 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
             throw new LifecycleException(e);
         }
 
-        log.info("Will expire sessions after " + getMaxInactiveInterval() + " seconds");
+        log.info("Will expire sessions after " + getContext().getSessionTimeout() + " seconds");
 
         initializeDatabaseConnection();
+        this.getContext().setDistributable(true);
 
-        setDistributable(true);
     }
 
+    //    /**
+    //     * Add a lifecycle event listener to this component.
+    //     *
+    //     * @param listener The listener to add
+    //     */
+    //    @Override
+    //    public void addLifecycleListener(LifecycleListener listener) {
+    //        lifecycle.addLifecycleListener(listener);
+    //    }
+    //
+    //    /**
+    //     * Get the lifecycle listeners associated with this lifecycle. If this
+    //     * Lifecycle has no listeners registered, a zero-length array is returned.
+    //     */
+    //    @Override
+    //    public LifecycleListener[] findLifecycleListeners() {
+    //        return lifecycle.findLifecycleListeners();
+    //    }
+    //
+
+    //    /**
+    //     * Remove a lifecycle event listener from this component.
+    //     *
+    //     * @param listener The listener to remove
+    //     */
+    //    @Override
+    //    public void removeLifecycleListener(LifecycleListener listener) {
+    //        super.
+    //        lifecycle.removeLifecycleListener(listener);
+    //    }
 
     /**
      * Stop this component and implement the requirements
@@ -362,7 +336,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
                 session.setNew(true);
                 session.setValid(true);
                 session.setCreationTime(System.currentTimeMillis());
-                session.setMaxInactiveInterval(getMaxInactiveInterval());
+                session.setMaxInactiveInterval(getContext().getSessionTimeout());
                 session.setId(sessionId);
                 session.tellNew();
             }
@@ -388,7 +362,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
             session.setNew(true);
             session.setValid(true);
             session.setCreationTime(System.currentTimeMillis());
-            session.setMaxInactiveInterval(getMaxInactiveInterval());
+            session.setMaxInactiveInterval(getContext().getSessionTimeout());
             session.setId(sessionId);
             session.tellNew();
         } finally {
@@ -473,7 +447,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         }
     }
 
-    public int getSize() throws IOException {
+    public int getSize() {
         Jedis jedis = null;
         Boolean error = true;
         try {
@@ -488,7 +462,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         }
     }
 
-    public String[] keys() throws IOException {
+    public String[] keys() {
         Jedis jedis = null;
         Boolean error = true;
         try {
@@ -503,7 +477,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         }
     }
 
-    public byte[] loadSessionDataFromRedis(String id) throws IOException {
+    private byte[] loadSessionDataFromRedis(String id) {
         Jedis jedis = null;
         Boolean error = true;
 
@@ -526,7 +500,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         }
     }
 
-    public DeserializedSessionContainer sessionFromSerializedData(String id, byte[] data) throws IOException {
+    private DeserializedSessionContainer sessionFromSerializedData(String id, byte[] data) throws IOException {
         log.trace("Deserializing session " + id + " from Redis");
 
         if (Arrays.equals(NULL_SESSION, data)) {
@@ -534,7 +508,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
             throw new IOException("Serialized session data was equal to NULL_SESSION");
         }
 
-        RedisSession session = null;
+        RedisSession session;
         SessionSerializationMetadata metadata = new SessionSerializationMetadata();
 
         try {
@@ -544,7 +518,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
             session.setId(id);
             session.setNew(false);
-            session.setMaxInactiveInterval(getMaxInactiveInterval());
+            session.setMaxInactiveInterval(getContext().getSessionTimeout());
             session.access();
             session.setValid(true);
             session.resetDirtyTracking();
@@ -564,7 +538,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         return new DeserializedSessionContainer(session, metadata);
     }
 
-    public void save(Session session) throws IOException {
+    private void save(Session session) throws IOException {
         save(session, false);
     }
 
@@ -584,7 +558,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         }
     }
 
-    protected boolean saveInternal(Jedis jedis, Session session, boolean forceSave) throws IOException {
+    private boolean saveInternal(Jedis jedis, Session session, boolean forceSave) {
         Boolean error = true;
 
         try {
@@ -632,8 +606,8 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
                 log.trace("Save was determined to be unnecessary");
             }
 
-            log.trace("Setting expire timeout on session [" + redisSession.getId() + "] to " + getMaxInactiveInterval());
-            jedis.expire(binaryId, getMaxInactiveInterval());
+            log.trace("Setting expire timeout on session [" + redisSession.getId() + "] to " + getContext().getSessionTimeout());
+            jedis.expire(binaryId, getContext().getSessionTimeout());
 
             error = false;
 
@@ -723,8 +697,8 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
         Loader loader = null;
 
-        if (getContainer() != null) {
-            loader = getContainer().getLoader();
+        if (getContext() != null) {
+            loader = getContext().getLoader();
         }
 
         ClassLoader classLoader = null;
@@ -735,14 +709,14 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         serializer.setClassLoader(classLoader);
     }
 
+    public int getConnectionPoolMaxTotal() {
+        return this.connectionPoolConfig.getMaxTotal();
+    }
+
 
     // Connection Pool Config Accessors
 
     // - from org.apache.commons.pool2.impl.GenericObjectPoolConfig
-
-    public int getConnectionPoolMaxTotal() {
-        return this.connectionPoolConfig.getMaxTotal();
-    }
 
     public void setConnectionPoolMaxTotal(int connectionPoolMaxTotal) {
         this.connectionPoolConfig.setMaxTotal(connectionPoolMaxTotal);
@@ -764,12 +738,12 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         this.connectionPoolConfig.setMinIdle(connectionPoolMinIdle);
     }
 
-
-    // - from org.apache.commons.pool2.impl.BaseObjectPoolConfig
-
     public boolean getLifo() {
         return this.connectionPoolConfig.getLifo();
     }
+
+
+    // - from org.apache.commons.pool2.impl.BaseObjectPoolConfig
 
     public void setLifo(boolean lifo) {
         this.connectionPoolConfig.setLifo(lifo);
@@ -885,6 +859,21 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
     public void setJmxNamePrefix(String jmxNamePrefix) {
         this.connectionPoolConfig.setJmxNamePrefix(jmxNamePrefix);
+    }
+
+    enum SessionPersistPolicy {
+        DEFAULT,
+        SAVE_ON_CHANGE,
+        ALWAYS_SAVE_AFTER_REQUEST;
+
+        static SessionPersistPolicy fromName(String name) {
+            for (SessionPersistPolicy policy : SessionPersistPolicy.values()) {
+                if (policy.name().equalsIgnoreCase(name)) {
+                    return policy;
+                }
+            }
+            throw new IllegalArgumentException("Invalid session persist policy [" + name + "]. Must be one of " + Arrays.asList(SessionPersistPolicy.values()) + ".");
+        }
     }
 }
 
