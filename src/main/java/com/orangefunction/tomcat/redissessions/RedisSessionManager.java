@@ -347,14 +347,14 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
             currentSessionSerializationMetadata.set(new SessionSerializationMetadata());
 
             if (null != session) {
-                try {
+                //                try {
                     error = saveInternal(jedis, session, true);
-                } catch (IOException ex) {
-                    log.error("Error saving newly created session: " + ex.getMessage());
-                    currentSession.set(null);
-                    currentSessionId.set(null);
-                    session = null;
-                }
+                //                } catch (IOException ex) {
+                //                    log.error("Error saving newly created session: " + ex.getMessage());
+                //                    currentSession.set(null);
+                //                    currentSessionId.set(null);
+                //                    session = null;
+                //                }
             }
         } catch (Exception e) {
             log.fatal("Session management not available!", e);
@@ -549,8 +549,8 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         try {
             jedis = acquireConnection();
             error = saveInternal(jedis, session, forceSave);
-        } catch (IOException e) {
-            throw e;
+            //        } catch (IOException e) {
+            //            throw e;
         } finally {
             if (jedis != null) {
                 returnConnection(jedis, error);
