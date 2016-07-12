@@ -12,27 +12,24 @@ import org.apache.juli.logging.LogFactory;
 
 public class RedisSession extends StandardSession {
 
+  private static Boolean manualDirtyTrackingSupportEnabled = false;
+  private static String manualDirtyTrackingAttributeKey = "__changed__";
   private final Log log = LogFactory.getLog(RedisSession.class);
+  private HashMap<String, Object> changedAttributes;
+  private Boolean dirty;
 
-  protected static Boolean manualDirtyTrackingSupportEnabled = false;
+
+  public RedisSession(Manager manager) {
+    super(manager);
+    resetDirtyTracking();
+  }
 
   public static void setManualDirtyTrackingSupportEnabled(Boolean enabled) {
     manualDirtyTrackingSupportEnabled = enabled;
   }
 
-  protected static String manualDirtyTrackingAttributeKey = "__changed__";
-
   public static void setManualDirtyTrackingAttributeKey(String key) {
     manualDirtyTrackingAttributeKey = key;
-  }
-
-
-  protected HashMap<String, Object> changedAttributes;
-  protected Boolean dirty;
-
-  public RedisSession(Manager manager) {
-    super(manager);
-    resetDirtyTracking();
   }
 
   public Boolean isDirty() {

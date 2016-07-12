@@ -1,5 +1,0 @@
-source "https://api.berkshelf.com"
-
-metadata
-
-cookbook 'java', github: 'agileorbit-cookbooks/java', branch: 'master'

@@ -1,6 +1,5 @@
 package com.orangefunction.tomcat.redissessions;
 
-import javax.servlet.http.HttpSession;
 import java.io.IOException;
 
 public interface Serializer {

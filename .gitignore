@@ -1,8 +1,13 @@
 .gradle/*
 build/*
+target/*
 example-app/build/*
 example-app/.gradle/*
 .DS_Store
 .rspec
 *.iml
 .idea/*
+/target/
+.project
+.classpath
+/.settings
