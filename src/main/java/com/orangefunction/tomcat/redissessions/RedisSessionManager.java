@@ -713,9 +713,9 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     serializer = (Serializer) Class.forName(serializationStrategyClass).newInstance();
 
     Loader loader = null;
-
-    if (getContainer() != null) {
-      loader = getContainer().getLoader();
+    Context context = this.getContext();
+    if (context != null) {
+        loader = context.getLoader();
     }
 
     ClassLoader classLoader = null;
