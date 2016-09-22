@@ -1,9 +1,14 @@
 package com.orangefunction.tomcat.redissessions;
 
+import org.apache.juli.logging.Log;
+import org.apache.juli.logging.LogFactory;
+
 import java.io.*;
 
 
 public class SessionSerializationMetadata implements Serializable {
+
+  private final Log log = LogFactory.getLog(SessionSerializationMetadata.class);
 
   private byte[] sessionAttributesHash;
 
@@ -23,16 +28,26 @@ public class SessionSerializationMetadata implements Serializable {
     this.setSessionAttributesHash(metadata.getSessionAttributesHash());
   }
 
-  private void writeObject(java.io.ObjectOutputStream out) throws IOException {
-    out.writeInt(sessionAttributesHash.length);
-    out.write(this.sessionAttributesHash);
+  private void writeObject(java.io.ObjectOutputStream out) throws Exception {
+    try{
+      out.writeInt(sessionAttributesHash.length);
+      out.write(this.sessionAttributesHash);
+    }catch (Exception e){
+      log.error(e);
+      throw e;
+    }
   }
 
-  private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
-    int hashLength = in.readInt();
-    byte[] sessionAttributesHash = new byte[hashLength];
-    in.read(sessionAttributesHash, 0, hashLength);
-    this.sessionAttributesHash = sessionAttributesHash;
+  private void readObject(java.io.ObjectInputStream in) throws Exception {
+    try {
+      int hashLength = in.readInt();
+      byte[] sessionAttributesHash = new byte[hashLength];
+      in.read(sessionAttributesHash, 0, hashLength);
+      this.sessionAttributesHash = sessionAttributesHash;
+    } catch (Exception e) {
+      log.error(e);
+      throw e;
+    }
   }
 
   private void readObjectNoData() throws ObjectStreamException {
