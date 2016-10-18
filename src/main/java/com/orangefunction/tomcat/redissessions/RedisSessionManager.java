@@ -54,9 +54,9 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
   private final Log log = LogFactory.getLog(RedisSessionManager.class);
 
-  protected String host = "localhost";
-  protected int port = 6379;
-  protected int database = 0;
+  protected String host = Protocol.DEFAULT_HOST;
+  protected int port = Protocol.DEFAULT_PORT;
+  protected int database = Protocol.DEFAULT_DATABASE;
   protected String password = null;
   protected int timeout = Protocol.DEFAULT_TIMEOUT;
   protected String sentinelMaster = null;
@@ -78,6 +78,8 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
   protected EnumSet<SessionPersistPolicy> sessionPersistPoliciesSet = EnumSet.of(SessionPersistPolicy.DEFAULT);
 
+  protected int maxActiveSessions = -1;
+  protected int rejectedSessions = 0;
   /**
    * The lifecycle event support for this component.
    */
@@ -189,14 +191,23 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     this.sentinelMaster = master;
   }
 
-  @Override
-  public int getRejectedSessions() {
-    // Essentially do nothing.
-    return 0;
+  public int getMaxActiveSessions() {
+    return this.maxActiveSessions;
   }
 
-  public void setRejectedSessions(int i) {
-    // Do nothing.
+  public void setMaxActiveSessions(int max) {
+    int oldMaxActiveSessions = this.maxActiveSessions;
+    this.maxActiveSessions = max;
+    this.support.firePropertyChange("maxActiveSessions", new Integer(oldMaxActiveSessions), new Integer(this.maxActiveSessions));
+  }
+
+  @Override
+  public int getRejectedSessions() {
+    return rejectedSessions;
+  }
+
+  public void setRejectedSessions(int rejectedSessions) {
+    this.rejectedSessions = rejectedSessions;
   }
 
   protected Jedis acquireConnection() {
@@ -333,6 +344,11 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
   @Override
   public Session createSession(String requestedSessionId) {
+    if (maxActiveSessions >= 0 && getSize() >= maxActiveSessions) {
+      ++rejectedSessions;
+	  throw new IllegalStateException(sm.getString("standardManager.createSession.ise"));
+    }
+
     RedisSession session = null;
     String sessionId = null;
     String jvmRoute = getJvmRoute();
@@ -448,6 +464,23 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     }
 
     return session;
+  }
+
+  @Override
+  public Session[] findSessions() {
+    try {
+		String[] keys = keys();
+		Session[] sessions = new Session[keys.length];
+		int i = 0;
+		for(String key : keys) {
+          byte[] data = loadSessionDataFromRedis(key);
+		  DeserializedSessionContainer container = sessionFromSerializedData(key, data);
+          sessions[i++] = container.session;
+		}
+        return sessions;
+    } catch (IOException e) {
+        log.error("Error find sessions", e);
+    }
   }
 
   public void clear() {

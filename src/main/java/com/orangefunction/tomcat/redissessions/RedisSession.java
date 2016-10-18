@@ -117,4 +117,21 @@ public class RedisSession extends StandardSession {
     this.setCreationTime(in.readLong());
   }
 
+  @Override
+  public void access() {
+    if (getMaxInactiveInterval() > 0) {
+      Jedis jedis = null;
+      try {
+        jedis = ((RedisSessionManager) manager).acquireConnection();
+        jedis.expire(getId().getBytes(), getMaxInactiveInterval());
+	  } catch (IOException e) {
+        log.error(e.getMessage());
+	  } finally {
+		if (jedis != null) {
+		  returnConnection(jedis, error);
+		}
+      }
+	}
+  }
+
 }
