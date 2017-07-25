@@ -15,7 +15,7 @@ compileJava {
 }
 
 dependencies {
-  compile group: 'org.apache.tomcat', name: 'tomcat-catalina', version: '7.0.27'
+  compile group: 'org.apache.tomcat', name: 'tomcat-catalina', version: '8.0.26'
   compile group: 'redis.clients', name: 'jedis', version: '2.5.2'
   compile group: 'org.apache.commons', name: 'commons-pool2', version: '2.2'
   //compile group: 'commons-codec', name: 'commons-codec', version: '1.9'
@@ -24,7 +24,7 @@ dependencies {
   testCompile 'org.hamcrest:hamcrest-core:1.3'
   testCompile 'org.hamcrest:hamcrest-library:1.3'
   testCompile 'org.mockito:mockito-all:1.9.5'
-  testCompile group: 'org.apache.tomcat', name: 'tomcat-coyote', version: '7.0.27'
+  testCompile group: 'org.apache.tomcat', name: 'tomcat-coyote', version: '8.0.26'
 }
 
 task javadocJar(type: Jar, dependsOn: javadoc) {
@@ -35,6 +35,11 @@ task javadocJar(type: Jar, dependsOn: javadoc) {
 task sourcesJar(type: Jar) {
   from sourceSets.main.allSource
   classifier = 'sources'
+}
+
+task releaseJar(type: Jar) {
+  from 'bin'
+  destinationDir = file('build/libs')
 }
 
 artifacts {
@@ -53,9 +58,9 @@ uploadArchives {
     mavenDeployer {
       beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
 
-      repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-        authentication(userName: sonatypeUsername, password: sonatypePassword)
-      }
+      //repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+      //  authentication(userName: sonatypeUsername, password: sonatypePassword)
+      //}
       //repository(url: "https://oss.sonatype.org/content/repositories/snapshots") {
       //  authentication(userName: sonatypeUsername, password: sonatypePassword)
       //}
