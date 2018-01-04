@@ -6,3 +6,5 @@ example-app/.gradle/*
 .rspec
 *.iml
 .idea/*
+/bin/
+/.gradle/
