@@ -2,7 +2,6 @@ package com.orangefunction.tomcat.redissessions;
 
 import org.apache.catalina.util.CustomObjectInputStream;
 
-import javax.servlet.http.HttpSession;
 
 import java.util.Enumeration;
 import java.util.HashMap;

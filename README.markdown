@@ -55,6 +55,19 @@ Architecture
 
 Note: this architecture differs from the Apache PersistentManager implementation which implements persistent sticky sessions. Because that implementation expects all requests from a specific session to be routed to the same server, the timing persistence of sessions is non-deterministic since it is primarily for failover capabilities.
 
+
+Support Reids Cluster & JDK 8
+------------
+
+ <Valve className="com.orangefunction.tomcat.redissessions.RedisSessionHandlerValve" />
+ <Manager className="com.orangefunction.tomcat.redissessions.RedisSessionManager"
+      database="0" <!-- optional: defaults to "0" -->
+      maxInactiveInterval="60" <!-- optional: defaults to "60" (in seconds) -->
+             sessionPersistPolicies="PERSIST_POLICY_1,PERSIST_POLICY_2,.." <!-- optional -->
+             clusters="host-1:port,host-2:port,.."  />
+
+
+
 Usage
 -----
 
@@ -69,14 +82,15 @@ Add the following into your Tomcat context.xml (or the context block of the serv
              sessionPersistPolicies="PERSIST_POLICY_1,PERSIST_POLICY_2,.." <!-- optional -->
              sentinelMaster="SentinelMasterName" <!-- optional -->
              sentinels="sentinel-host-1:port,sentinel-host-2:port,.." <!-- optional --> />
+             clusters="host-1:port,host-2:port,.." <!-- optional --> />
 
 The Valve must be declared before the Manager.
 
 Copy the following files into the `TOMCAT_BASE/lib` directory:
 
 * tomcat-redis-session-manager-VERSION.jar
-* jedis-2.5.2.jar
-* commons-pool2-2.2.jar
+* jedis-2.9.0.jar
+* commons-pool2-2.4.2.jar
 
 Reboot the server, and sessions should now be stored in Redis.
 

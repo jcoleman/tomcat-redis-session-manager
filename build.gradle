@@ -3,7 +3,7 @@ apply plugin: 'maven'
 apply plugin: 'signing'
 
 group = 'com.orangefunction'
-version = '2.0.0'
+version = '2.0.2'
 
 repositories {
   mavenCentral()
@@ -16,8 +16,8 @@ compileJava {
 
 dependencies {
   compile group: 'org.apache.tomcat', name: 'tomcat-catalina', version: '7.0.27'
-  compile group: 'redis.clients', name: 'jedis', version: '2.5.2'
-  compile group: 'org.apache.commons', name: 'commons-pool2', version: '2.2'
+  compile group: 'redis.clients', name: 'jedis', version: '2.9.0'
+  compile group: 'org.apache.commons', name: 'commons-pool2', version: '2.4.2'
   //compile group: 'commons-codec', name: 'commons-codec', version: '1.9'
 
   testCompile group: 'junit', name: 'junit', version: '4.+'
@@ -40,22 +40,22 @@ task sourcesJar(type: Jar) {
 artifacts {
   archives jar
 
-  archives javadocJar
+  archives javadocJar 
   archives sourcesJar
 }
 
-signing {
-  sign configurations.archives
-}
+//signing {
+//  sign configurations.archives
+//}
 
 uploadArchives {
   repositories {
     mavenDeployer {
       beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
 
-      repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-        authentication(userName: sonatypeUsername, password: sonatypePassword)
-      }
+     // repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+     //   authentication(userName: sonatypeUsername, password: sonatypePassword)
+     // }
       //repository(url: "https://oss.sonatype.org/content/repositories/snapshots") {
       //  authentication(userName: sonatypeUsername, password: sonatypePassword)
       //}
