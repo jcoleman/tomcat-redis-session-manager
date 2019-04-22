@@ -53,6 +53,10 @@ public class RedisSession extends StandardSession {
     }
 
     Object oldValue = getAttribute(key);
+    if (value == null && oldValue == null) {
+      return;
+    }
+    
     if ( value == null && oldValue != null
          || oldValue == null && value != null
          || !value.getClass().isInstance(oldValue)
