@@ -123,14 +123,11 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
   }
 
   public void setSentinels(String sentinels) {
-    if (null == sentinels) {
-      sentinels = "";
-    }
+    this.sentinels = (sentinels == null ) ? "" : sentinels;
 
     String[] sentinelArray = getSentinels().split(",");
     this.sentinelSet = new HashSet<String>(Arrays.asList(sentinelArray));
 
-    this.sentinels = sentinels;
   }
 
   public Set<String> getSentinelSet() {
