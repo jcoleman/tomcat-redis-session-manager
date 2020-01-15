@@ -1,36 +1,15 @@
 package com.orangefunction.tomcat.redissessions;
 
-import org.apache.catalina.Lifecycle;
-import org.apache.catalina.LifecycleException;
-import org.apache.catalina.LifecycleListener;
-import org.apache.catalina.util.LifecycleSupport;
-import org.apache.catalina.LifecycleState;
-import org.apache.catalina.Loader;
-import org.apache.catalina.Valve;
-import org.apache.catalina.Session;
+import org.apache.catalina.*;
 import org.apache.catalina.session.ManagerBase;
-
-import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
-import org.apache.commons.pool2.impl.BaseObjectPoolConfig;
-
-import redis.clients.util.Pool;
-import redis.clients.jedis.JedisPool;
-import redis.clients.jedis.JedisSentinelPool;
-import redis.clients.jedis.JedisPoolConfig;
-import redis.clients.jedis.Jedis;
-import redis.clients.jedis.Protocol;
-
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.Set;
-import java.util.EnumSet;
-import java.util.HashSet;
-import java.util.Iterator;
-
 import org.apache.juli.logging.Log;
 import org.apache.juli.logging.LogFactory;
+import redis.clients.jedis.*;
+import redis.clients.util.Pool;
+
+import java.beans.PropertyChangeSupport;
+import java.io.IOException;
+import java.util.*;
 
 
 public class RedisSessionManager extends ManagerBase implements Lifecycle {
@@ -81,7 +60,6 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
   /**
    * The lifecycle event support for this component.
    */
-  protected LifecycleSupport lifecycle = new LifecycleSupport(this);
 
   public String getHost() {
     return host;
@@ -231,6 +209,13 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
   }
 
+  protected final PropertyChangeSupport support =
+          new PropertyChangeSupport(this);
+
+  private LifecycleListener listeners[] = new LifecycleListener[0];
+
+  private final Object listenersLock = new Object(); // Lock object for changes to listeners
+
   /**
    * Add a lifecycle event listener to this component.
    *
@@ -238,7 +223,15 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
    */
   @Override
   public void addLifecycleListener(LifecycleListener listener) {
-    lifecycle.addLifecycleListener(listener);
+    synchronized (listenersLock) {
+      LifecycleListener results[] =
+              new LifecycleListener[listeners.length + 1];
+      for (int i = 0; i < listeners.length; i++) {
+        results[i] = listeners[i];
+      }
+      results[listeners.length] = listener;
+      listeners = results;
+    }
   }
 
   /**
@@ -247,7 +240,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
    */
   @Override
   public LifecycleListener[] findLifecycleListeners() {
-    return lifecycle.findLifecycleListeners();
+    return listeners;
   }
 
 
@@ -258,7 +251,27 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
    */
   @Override
   public void removeLifecycleListener(LifecycleListener listener) {
-    lifecycle.removeLifecycleListener(listener);
+    synchronized (listenersLock) {
+      int n = -1;
+      for (int i = 0; i < listeners.length; i++) {
+        if (listeners[i] == listener) {
+          n = i;
+          break;
+        }
+      }
+      if (n < 0) {
+        return;
+      }
+      LifecycleListener results[] =
+              new LifecycleListener[listeners.length - 1];
+      int j = 0;
+      for (int i = 0; i < listeners.length; i++) {
+        if (i != n) {
+          results[j++] = listeners[i];
+        }
+      }
+      listeners = results;
+    }
   }
 
   /**
@@ -275,7 +288,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     setState(LifecycleState.STARTING);
 
     Boolean attachedToValve = false;
-    for (Valve valve : getContainer().getPipeline().getValves()) {
+    for (Valve valve : getContext().getPipeline().getValves()) {
       if (valve instanceof RedisSessionHandlerValve) {
         this.handlerValve = (RedisSessionHandlerValve) valve;
         this.handlerValve.setRedisSessionManager(this);
@@ -301,8 +314,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     log.info("Will expire sessions after " + getMaxInactiveInterval() + " seconds");
 
     initializeDatabaseConnection();
-
-    setDistributable(true);
+    getContext().setDistributable(true);
   }
 
 
@@ -517,6 +529,12 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     }
   }
 
+  public int getMaxInactiveInterval() {
+
+    return getContext().getSessionTimeout() * 60;
+
+  }
+
   public DeserializedSessionContainer sessionFromSerializedData(String id, byte[] data) throws IOException {
     log.trace("Deserializing session " + id + " from Redis");
 
@@ -714,8 +732,8 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
     Loader loader = null;
 
-    if (getContainer() != null) {
-      loader = getContainer().getLoader();
+    if (getContext() != null) {
+      loader = getContext().getLoader();
     }
 
     ClassLoader classLoader = null;
