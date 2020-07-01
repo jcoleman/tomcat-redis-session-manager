@@ -4,6 +4,10 @@ group = 'com.orangefunction'
 version = '2.1.0'
 
 repositories {
+  mavenLocal()
+  maven {
+    url "https://maven.aliyun.com/nexus/content/groups/public"
+  }
   mavenCentral()
 }
 
