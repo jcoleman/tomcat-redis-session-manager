@@ -57,6 +57,12 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
     protected EnumSet<SessionPersistPolicy> sessionPersistPoliciesSet = EnumSet.of(SessionPersistPolicy.DEFAULT);
 
+    protected String maxInactiveInterval;
+
+    public void setMaxInactiveInterval(String maxInactiveInterval) {
+        this.maxInactiveInterval = maxInactiveInterval;
+    }
+
     /**
      * The lifecycle event support for this component.
      */
@@ -530,7 +536,11 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     }
 
     public int getMaxInactiveInterval() {
-        return getContext().getSessionTimeout() * 60;
+        if (maxInactiveInterval == null || maxInactiveInterval.trim().length() == 0) {
+            return getContext().getSessionTimeout() * 60;
+        } else {
+            return Integer.valueOf(maxInactiveInterval) * 60;
+        }
     }
 
     public DeserializedSessionContainer sessionFromSerializedData(String id, byte[] data) throws IOException {
@@ -719,7 +729,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
                 connectionPool = new JedisPool(this.connectionPoolConfig, getHost(), getPort(), getTimeout(), getPassword());
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error connecting to Redis", e);
             throw new LifecycleException("Error connecting to Redis", e);
         }
     }
