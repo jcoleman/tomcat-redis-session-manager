@@ -667,7 +667,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     Boolean error = true;
 
     log.trace("Removing session ID : " + session.getId());
-
+    currentSessionSerializationMetadata.remove();
     try {
       jedis = acquireConnection();
       jedis.del(session.getId());
