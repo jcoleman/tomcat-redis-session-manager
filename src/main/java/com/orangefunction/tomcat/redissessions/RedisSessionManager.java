@@ -758,7 +758,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
     @Override
     public void processExpires() {
         // We are going to use Redis's ability to expire keys for session expiration.
-        System.out.println("开始运行：" + sdf.format(new Date()));
+//        System.out.println("开始运行：" + sdf.format(new Date()));
         super.processExpires();
         // Do nothing.
     }
