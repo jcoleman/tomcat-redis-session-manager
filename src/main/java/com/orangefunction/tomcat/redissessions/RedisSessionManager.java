@@ -10,7 +10,6 @@ import redis.clients.util.Pool;
 
 import java.beans.PropertyChangeSupport;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
 import java.util.*;
 
 
@@ -753,12 +752,9 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
         }
     }
 
-    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.sss");
-
     @Override
     public void processExpires() {
         // We are going to use Redis's ability to expire keys for session expiration.
-//        System.out.println("开始运行：" + sdf.format(new Date()));
         super.processExpires();
         // Do nothing.
     }
