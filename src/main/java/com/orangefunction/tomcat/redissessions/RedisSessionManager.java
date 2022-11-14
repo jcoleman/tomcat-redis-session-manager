@@ -630,7 +630,7 @@ public class RedisSessionManager extends ManagerBase implements Lifecycle {
 
       return error;
     } catch (IOException e) {
-      log.error(e.getMessage());
+      log.error(e.getClass().getName() + ":" + e.getMessage());
 
       throw e;
     } finally {
