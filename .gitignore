@@ -1,8 +1,34 @@
-.gradle/*
-build/*
-example-app/build/*
-example-app/.gradle/*
-.DS_Store
+.svn
+
+bin
+build
+target
 .rspec
+.gradle
+
+*.log
+
+*.class
+
+# Package Files #
+*.jar
+*.war
+*.ear
+
+# Eclipse #
+.project
+.classpath
+.settings
+
+# IntelliJ IDEA #
+*.ipr
+*.iws
 *.iml
-.idea/*
+.idea
+out
+
+# Windows #
+Thumbs.db
+
+# Mac #
+.DS_Store
