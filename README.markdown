@@ -55,6 +55,11 @@ Architecture
 
 Note: this architecture differs from the Apache PersistentManager implementation which implements persistent sticky sessions. Because that implementation expects all requests from a specific session to be routed to the same server, the timing persistence of sessions is non-deterministic since it is primarily for failover capabilities.
 
+Building
+--------
+
+Run ./build.sh
+
 Usage
 -----
 
@@ -77,6 +82,8 @@ Copy the following files into the `TOMCAT_BASE/lib` directory:
 * tomcat-redis-session-manager-VERSION.jar
 * jedis-2.5.2.jar
 * commons-pool2-2.2.jar
+
+(Grab dependency jars with ./grab-deps.sh)
 
 Reboot the server, and sessions should now be stored in Redis.
 
